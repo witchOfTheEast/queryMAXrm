@@ -14,13 +14,16 @@ from bs4 import BeautifulSoup as bsoup
 api_key = '6p3t2wsX2nOyUwjNAN5JXLHJRGzT3SGN'
 query_server = 'www.systemmonitor.us'
 client_id_list = {}
+client_list_payload = {'service': 'list_clients'}
+# will the server take a list for the clientids
+#site_list_payload = {'service': 'list_sites', clientid=
 
-def acquire():
 
-    resp = requests.get('https://%s/api/?apikey=%s&service=list_clients' % (query_server, api_key))
+def acquire(payload):
+
+    resp = requests.get('https://%s/api/?apikey=%s&' % (query_server, api_key), params=payload)
     return resp
 
-#resp2 = requests.post('https://%s/api/?apikey=%s&service=list_clients' % (query_server, api_key)) 
 
 # Using tempFile for testing. Un-comment for deploy.
 # client_data = acquire()
