@@ -1,0 +1,2 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<result created="2015-05-22T14:54:28-05:00" host="www.systemmonitor.us" status="OK"><items><site><siteid>231739</siteid><name><![CDATA[Sylvan Street]]></name><connection_ok>1</connection_ok><creation_date>2014-10-09</creation_date><primary_router/><secondary_router/></site><site><siteid>249586</siteid><name><![CDATA[Laurel Canyon]]></name><connection_ok>1</connection_ok><creation_date>2014-12-17</creation_date><primary_router/><secondary_router/></site></items></result>
