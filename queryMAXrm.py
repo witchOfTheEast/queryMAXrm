@@ -48,11 +48,6 @@ def dispClients():
     for i in client_list:
         print i, ':', client_list[i].client_id
 
-def xacquire(payload):
-    """Make https get to server with api key using supplied payload parameter(s)"""
-    resp = requests.get('https://%s/api/?apikey=%s&' % (query_server, api_key), params=payload)
-    return resp
-
 def put_data(result_1, result_2, type, cur_client=None):
     """Add key:values taken from get(s) to Client instances.
        result_1 should be parent tag (i.e all_name)
@@ -124,71 +119,11 @@ def acquire_data(type):
             resp = None
             extract_data(type, resp, cur_client=cur_client)
     
-def xpopulate_client_list():
-    """Populate a list with desired information from get(s) to server"""
-    #Using tempFile for testing. Un-comment for deploy.
-    #client_data = acquire(client_list_payload)
-    with open('./data/tempFile', 'r') as f:
-        client_data = f.read()
-        f.close()
-
-    soup = bsoup(client_data, 'html5lib')
-
-    all_clientid = soup.find_all('clientid')
-    all_name = soup.find_all('name')
-
-    if len(all_name) != len(all_clientid):
-        print "\nNumber of client names and ids do not match"
-    
-    put_data(all_name, all_clientid, 'clientid')
-
-def xextract_sites(data, cur_client):
-    """Extract desired data from raw http response and add to Client instance(s)"""
-    # using static files for testing. uncomment and adjust for deploy
-    #soup = bsoup(data.text, 'html5lib')
-    with open('./data/%s_siteData' % cur_client.client_id, 'r') as f:
-        data = f.read()
-        f.close()
-
-    soup = bsoup(data, 'html5lib')
-
-    all_siteid = soup.find_all('siteid')
-    all_name = soup.find_all('name')
-
-    if len(all_name) != len(all_siteid):
-        print "\nNumber of site names and ids do not match"
-    
-    put_data(all_name, all_siteid, type='siteid', cur_client=cur_client)
-
-def xpopulate_site_list():
-    """Populate list with desired information from get(s) to server"""
-    for cur_client in client_list.values():
-        temp_payload = {'service': 'list_sites', 'clientid': cur_client.client_id}
-        # using static files for testing. uncomment and adjust for deploy
-        #site_data = acquire(temp_payload)
-        site_data = ''
-        extract_sites(site_data, cur_client)
-
-'''
-for i in list of client_ids:
-    acquire sites
-    put sites into correct Client instance
-        by site name, site id
-'''
-#populate_client_list()
-#populate_site_list()
-
-#extract_data('clientid', data=None)
-
-#for cur_client in client_list.values():
-#    extract_data('siteid', data=None, cur_client=cur_client)
-
 acquire_data('clientid')
 acquire_data('siteid')
 
 dispClients()
 print ''
 dispSites()
-#print client_list['MOSM'].name, client_list['MOSM'].client_id
 
 
