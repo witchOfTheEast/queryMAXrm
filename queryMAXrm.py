@@ -7,6 +7,8 @@
 # Requires requests, BeautifulSoup from bs4
 #
 # NOTE: If API key is regenerated in MAXrm it *must* be updated here
+# NOTE: BeautifulSoup deal in unicode, python str may need .encode('utf-8')
+# appended, esp. when piping or writing out to file
 import requests
 from bs4 import BeautifulSoup as bsoup
 
@@ -22,11 +24,14 @@ class Client:
     """Client object to hold client_name, client_id, site_id, device_id(s) etc."""
    
     client_count = 0
+    master_device_list = {} 
 
     def __init__(self, name, client_id):
         self.name = name
         self.client_id = client_id
         self.site_list = {}
+        self.device_list = {}
+
         Client.client_count += 1
 
     def dispClient(self):
@@ -98,10 +103,9 @@ def extract_data(type, data=None, cur_client=None):
     
     if len(result_1) != len(result_2):
         print "\nNumber of client names and ids do not match"
+    return result_1, result_2
 
-    put_data(result_1, result_2, type=type, cur_client=cur_client)
-
-def acquire_data(type):
+def acquire_data(type, cur_client=None, devicetype=None):
     """https GET response from server and call extract_data() in it"""
     if type == 'clientid':
         payload = {'service': 'list_clients'}
@@ -109,21 +113,57 @@ def acquire_data(type):
         #Uncomment and test https GET for deploy
         #resp = requests.get('https://%s/api/?apikey=%s&' % (query_server, api_key), params=payload)
         resp = None
-        extract_data(type, resp)
 
     if type == 'siteid':
-        for cur_client in client_list.values():
-            payload = {'service': 'list_sites', 'clientid': cur_client.client_id}
-            #Uncomment and test https GET for deploy
-            #resp = requests.get('https://%s/api/?apikey=%s&' % (query_server, api_key), params=payload)
-            resp = None
-            extract_data(type, resp, cur_client=cur_client)
+        payload = {'service': 'list_sites', 'clientid': cur_client.client_id}
+        #Uncomment and test https GET for deploy
+        #resp = requests.get('https://%s/api/?apikey=%s&' % (query_server, api_key), params=payload)
+        resp = None
+
+    if type == 'deviceid':
+        payload = {'service': 'list_devices_at_client', 'clientid': cur_client.client_id, 'devicetype': devicetype}
+
+        #Uncomment and test https GET for deploy
+        #resp = requests.get('https://%s/api/?apikey=%s&' % (query_server, api_key), params=payload)
     
-acquire_data('clientid')
-acquire_data('siteid')
+        resp = None
+        
+    return resp
 
-dispClients()
-print ''
-dispSites()
+def write_out_data():
+    """For dev, write out data to use while testing"""
+
+    with open('./data/devices/%s_%s_deviceData' % (cur_client.client_id, devicetype), 'w') as f:
+        f.write(resp.text.encode('utf-8'))
+        f.close()
+
+def main():
+
+    # Stanza for client list
+    type = 'clientid'
+    response_data = acquire_data(type)
+    data_1, data_2 = extract_data(type, response_data)
+    put_data(data_1, data_2, type)
+    #dispClients()
+    
+    print ''
+    
+    # Stanza for site list
+    type = 'siteid'
+    for cur_client in client_list.values():
+        response_data = acquire_data(type, cur_client)
+        data_1, data_2 = extract_data(type, response_data, cur_client)
+        put_data(data_1, data_2, type, cur_client)
+    #dispSites()
+    
+    type = 'deviceid'
+    device_type_list = ['workstation', 'server']
+    for device_type in device_type_list:
+        for cur_client in client_list.values():
+            response_data = acquire_data(type, cur_client, device_type)
+            #data_1, data_2 = extract_data(type, response_data, cur_client)
+            #put_data(data_1, data_2, type, cur_client)
 
 
+if __name__ == '__main__':
+    main()
