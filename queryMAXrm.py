@@ -24,6 +24,7 @@ class Client:
     """Client object to hold client_name, client_id, site_id, device_id(s) etc."""
    
     client_count = 0
+    device_count = 0
     master_device_list = {} 
 
     def __init__(self, name, client_id):
@@ -53,7 +54,7 @@ def dispClients():
     for i in client_list:
         print i, ':', client_list[i].client_id
 
-def put_data(result_1, result_2, type, cur_client=None):
+def put_data(result_1, result_2, type, cur_client=None, devicetype=None):
     """Add key:values taken from get(s) to Client instances.
        result_1 should be parent tag (i.e all_name)
        result_2 should be child tag (i.e. clientid or siteid)
@@ -71,8 +72,16 @@ def put_data(result_1, result_2, type, cur_client=None):
         
         elif type == 'siteid':
             cur_client.site_list[val_1] = val_2
+
+        elif type == 'deviceid':
+            tmp = unicode(result_1[i].contents[1].string)
+            dev_name = tmp[7:-2]
+            dev_id = unicode(result_1[i].contents[0].string)
+            cur_client.device_list[dev_name] = dev_id
+            Client.master_device_list[dev_name] = dev_id
+            Client.device_count += 1
     
-def extract_data(type, data=None, cur_client=None):
+def extract_data(type, data=None, cur_client=None, devicetype=None):
     """Filter and extract desired key:values from https GET resp and call
     put_data() to add attributes to instances
     """
@@ -89,6 +98,13 @@ def extract_data(type, data=None, cur_client=None):
             search_1 = 'name'
             search_2 = 'siteid'
 
+        elif type == 'deviceid':
+            filename = './data/devices/%s_%s_deviceData' % (cur_client.client_id, devicetype)
+            search_1 = devicetype
+            search_2 = 'id'
+        
+        elif type == 'mavscan':
+            pass 
         with open(filename, 'r') as f:
             data = f.read() # data is either
             f.close()
@@ -102,10 +118,11 @@ def extract_data(type, data=None, cur_client=None):
     result_2 = soup.find_all(search_2)
     
     if len(result_1) != len(result_2):
-        print "\nNumber of client names and ids do not match"
+        #print "\nNumber of client names and ids do not match"
+        pass
     return result_1, result_2
 
-def acquire_data(type, cur_client=None, devicetype=None):
+def acquire_data(type, cur_client=None, devicetype=None, dev_id=None):
     """https GET response from server and call extract_data() in it"""
     if type == 'clientid':
         payload = {'service': 'list_clients'}
@@ -125,7 +142,15 @@ def acquire_data(type, cur_client=None, devicetype=None):
 
         #Uncomment and test https GET for deploy
         #resp = requests.get('https://%s/api/?apikey=%s&' % (query_server, api_key), params=payload)
-    
+        resp = None 
+    if type == 'mavscan':
+        payload = {'service': 'list_mav_scans', 'deviceid': dev_id, 'details': 'YES'}
+        resp = requests.get('https://%s/api/?apikey=%s&' % (query_server, api_key), params=payload)
+
+        with open('./data/scans/%s_%s_scanData' % (cur_client.name, dev_id), 'w') as f:
+            f.write(resp.text.encode('utf-8'))
+            f.close()
+
         resp = None
         
     return resp
@@ -137,6 +162,15 @@ def write_out_data():
         f.write(resp.text.encode('utf-8'))
         f.close()
 
+def produce_scan_results(client_name=None):
+    type = 'mavscan'
+    
+    cur_client = client_list[client_name]
+    for cur_client in client_list.values():
+        for dev_id in cur_client.device_list.values():
+            response_data = acquire_data(type, cur_client=cur_client, dev_id=dev_id)
+        
+        
 def main():
 
     # Stanza for client list
@@ -161,9 +195,11 @@ def main():
     for device_type in device_type_list:
         for cur_client in client_list.values():
             response_data = acquire_data(type, cur_client, device_type)
-            #data_1, data_2 = extract_data(type, response_data, cur_client)
-            #put_data(data_1, data_2, type, cur_client)
+            data_1, data_2 = extract_data(type, response_data, cur_client, device_type)
+            put_data(data_1, data_2, type, cur_client, device_type)
 
+        
+    produce_scan_results('United Imaging')
 
 if __name__ == '__main__':
     main()
