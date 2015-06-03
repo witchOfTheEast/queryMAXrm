@@ -7,8 +7,9 @@
 # Requires requests, BeautifulSoup from bs4
 #
 # NOTE: If API key is regenerated in MAXrm it *must* be updated here
-# NOTE: BeautifulSoup deal in unicode, python str may need .encode('utf-8')
+# NOTE: BeautifulSoup deals in unicode, python str may need .encode('utf-8')
 # appended, esp. when piping or writing out to file
+
 import requests
 from bs4 import BeautifulSoup as bsoup
 
@@ -17,7 +18,7 @@ api_key = '6p3t2wsX2nOyUwjNAN5JXLHJRGzT3SGN'
 query_server = 'www.systemmonitor.us'
 client_list = {}
 client_list_payload = {'service': 'list_clients'}
-# will the server take a list for the clientids
+
 site_list_payload = {'service': 'list_sites', 'clientid': '204379'}
 
 class Client:
@@ -53,6 +54,24 @@ def dispClients():
     print '\n***Client name: ID***\n'
     for i in client_list:
         print i, ':', client_list[i].client_id
+
+def dispDevices():
+    """Display gathered devices and deviceIDs"""
+    for cur_client in client_list.values():
+        print type(cur_client)
+        cur_client.dispClient()
+        print 'Device name\tID'
+        print cur_client.device_list.items()
+        print ''
+
+def get_id(type, cur_client=None, target=None):
+    print ''
+    print cur_client
+    print target
+    print 'The ID for %s' % target
+    print client_list.keys()
+    print client_list[cur_client].device_list.keys()
+    print ''
 
 def put_data(result_1, result_2, type, cur_client=None, devicetype=None):
     """Add key:values taken from get(s) to Client instances.
@@ -105,6 +124,7 @@ def extract_data(type, data=None, cur_client=None, devicetype=None):
         
         elif type == 'mavscan':
             pass 
+        
         with open(filename, 'r') as f:
             data = f.read() # data is either
             f.close()
@@ -145,12 +165,7 @@ def acquire_data(type, cur_client=None, devicetype=None, dev_id=None):
         resp = None 
     if type == 'mavscan':
         payload = {'service': 'list_mav_scans', 'deviceid': dev_id, 'details': 'YES'}
-        resp = requests.get('https://%s/api/?apikey=%s&' % (query_server, api_key), params=payload)
-
-        with open('./data/scans/%s_%s_scanData' % (cur_client.name, dev_id), 'w') as f:
-            f.write(resp.text.encode('utf-8'))
-            f.close()
-
+        #resp = requests.get('https://%s/api/?apikey=%s&' % (query_server, api_key), params=payload)
         resp = None
         
     return resp
@@ -166,6 +181,7 @@ def produce_scan_results(client_name=None):
     type = 'mavscan'
     
     cur_client = client_list[client_name]
+    print 'Gather scan data for ', cur_client.name
     for cur_client in client_list.values():
         for dev_id in cur_client.device_list.values():
             response_data = acquire_data(type, cur_client=cur_client, dev_id=dev_id)
@@ -200,6 +216,11 @@ def main():
 
         
     produce_scan_results('United Imaging')
+
+    #dispDevices()
+    temp_list = ['IMAC008']
+    for target in temp_list:
+        get_id('no', 'Cherokee', target=target) 
 
 if __name__ == '__main__':
     main()
