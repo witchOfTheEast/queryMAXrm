@@ -76,6 +76,9 @@ class Device():
         self.client_id = ''
         self.threat_list = []
 
+    def get_id(self):
+       return self.id 
+
 def dispSites():
     print '\n***Client name: ID***\n***\tSite name: ID***\n'
     for i in client_list:
@@ -178,6 +181,29 @@ def extract_data(id_type, data=None, cur_client=None, devicetype=None):
         pass
     return result_1, result_2
 
+def extract_scan_data(response_data, cur_client, dev_id, dev_name):
+    """Return a structure containing threat data"""
+    print 'Looking at', dev_name
+    print 'id is', dev_id
+    # find all threats
+    soup = bsoup(response_data, 'html5lib')
+    
+    search_1 = 'threat'
+    
+    result_1 = soup.find_all(search_1)
+    
+    temp_threat_list = []
+    match_num = len(result_1)
+
+    print 'Threats found', match_num 
+    for i in range(match_num):
+        temp_threat_list = results_1[i].contents[1].string
+
+    for i in temp_threat_list:
+        print i
+    raw_input("****")
+
+
 def acquire_data(id_type, cur_client=None, devicetype=None, dev_id=None):
     """https GET response from server and call extract_data() in it"""
     if id_type == 'clientid':
@@ -249,10 +275,18 @@ def main():
             data_1, data_2 = extract_data(id_type, response_data, cur_client, device_type)
             put_data(data_1, data_2, id_type, cur_client, device_type)
 
-        
+    id_type = 'mavscan'
+    for cur_client in client_list.values():
+        for cur_device in cur_client.device_list.values():
+            dev_name = cur_device.name
+            dev_id = cur_device.id
+            response_data = acquire_data(id_type, cur_client=cur_client, dev_id=dev_id)
+            myData = extract_scan_data(response_data, cur_client=cur_client, dev_id=dev_id, dev_name=dev_name)
+            
+
     #produce_scan_results('united imaging')
 
-    dispDevices()
+    #dispDevices()
     temp_list = ['imac008', 'imac020']
     for target in temp_list:
         print '\nDevice %s' % target.upper(), get_id('cherokee', target=target) 
