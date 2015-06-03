@@ -64,14 +64,14 @@ def dispDevices():
         print cur_client.device_list.items()
         print ''
 
-def get_id(type, cur_client=None, target=None):
-    print ''
-    print cur_client
-    print target
-    print 'The ID for %s' % target
-    print client_list.keys()
-    print client_list[cur_client].device_list.keys()
-    print ''
+def get_id(type, cur_client, target):
+    """Take client and device name, return Device ID"""
+    if client_list[cur_client].device_list.has_key(target):
+        return client_list[cur_client].device_list[target]
+    else:
+        print ''
+        print '%s was not found in %s device list' % (target.upper(), cur_client.capitalize())
+        return ''
 
 def put_data(result_1, result_2, type, cur_client=None, devicetype=None):
     """Add key:values taken from get(s) to Client instances.
@@ -82,9 +82,9 @@ def put_data(result_1, result_2, type, cur_client=None, devicetype=None):
     for i in range(len(result_1)):
 
         tmp = unicode(result_1[i].string)
-        val_1 = tmp[7:-2]
+        val_1 = tmp[7:-2].lower()
         
-        val_2 = unicode(result_2[i].string)
+        val_2 = unicode(result_2[i].string).lower()
 
         if type == 'clientid':
             client_list[val_1] = Client(val_1, val_2)
@@ -94,7 +94,7 @@ def put_data(result_1, result_2, type, cur_client=None, devicetype=None):
 
         elif type == 'deviceid':
             tmp = unicode(result_1[i].contents[1].string)
-            dev_name = tmp[7:-2]
+            dev_name = tmp[7:-2].lower()
             dev_id = unicode(result_1[i].contents[0].string)
             cur_client.device_list[dev_name] = dev_id
             Client.master_device_list[dev_name] = dev_id
@@ -186,7 +186,6 @@ def produce_scan_results(client_name=None):
         for dev_id in cur_client.device_list.values():
             response_data = acquire_data(type, cur_client=cur_client, dev_id=dev_id)
         
-        
 def main():
 
     # Stanza for client list
@@ -215,12 +214,12 @@ def main():
             put_data(data_1, data_2, type, cur_client, device_type)
 
         
-    produce_scan_results('United Imaging')
+    produce_scan_results('united imaging')
 
     #dispDevices()
-    temp_list = ['IMAC008']
+    temp_list = ['imac008', 'imac020']
     for target in temp_list:
-        get_id('no', 'Cherokee', target=target) 
+        print '\nDevice %s' % target.upper(), get_id('no', 'cherokee', target=target) 
 
 if __name__ == '__main__':
     main()
