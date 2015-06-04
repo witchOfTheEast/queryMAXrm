@@ -197,8 +197,16 @@ def extract_scan_data(response_data, cur_client, dev_id, dev_name):
     search_2 = 'trace'
 
     result_1 = soup.find_all(search_1)
-    
-    temp_threat_list = []
+   
+    # Each device will receive one threat list containing a dictionary for each threat.
+    # Each threat_dict contains the name, status, type etc. and a trace_list
+    # Each trace_list contains the paths for each trace dealt under that particular threat
+
+    threat_list = []
+    threat_dict = {}
+    trace_list = []
+    threat_dict['dev_id'] = dev_id
+
     match_num = len(result_1)
 
     print 'Looking at', dev_name
@@ -206,7 +214,9 @@ def extract_scan_data(response_data, cur_client, dev_id, dev_name):
     print 'Threats found', match_num 
     
     for threat in result_1:
-        temp_threat_list.append(threat.contents[0].string)
+        threat_dict['name'] = threat.contents[0].string
+        threat_dict['status'] = threat.status.string
+        threat_dict['count'] = threat.count.string
         print 'name', threat.contents[0].string
         print 'status', threat.status.string
         print 'count', threat.count.string
@@ -217,14 +227,26 @@ def extract_scan_data(response_data, cur_client, dev_id, dev_name):
         #    print trace.description.string 
         
         result_2 = threat.find_all(search_2)
-        trace_count = 1
+        
         for trace in result_2:
-            print '\nTrace #' + str(trace_count), trace.description.string
-            trace_count += 1
-        print '' 
-    print temp_threat_list
+            trace_list.append(trace.description.string)
+            print 'trace', trace.description.string
+        
+        for sib in threat.parent.previous_siblings:
+            if sib.name == 'start':
+                threat_dict['start'] = sib.string 
+                print 'start', sib.string
+            if sib.name == 'type':
+                threat_dict['type'] = sib.string 
+                print 'type', sib.string
+
+        threat_dict['traces'] = trace_list
+
+        threat_list.append(threat_dict)
+
     raw_input("****")
 
+    return threat_list
 
 def acquire_data(id_type, cur_client=None, devicetype=None, dev_id=None):
     """https GET response from server and call extract_data() in it"""
@@ -303,8 +325,15 @@ def main():
             dev_name = cur_device.name
             dev_id = cur_device.id
             response_data = acquire_data(id_type, cur_client=cur_client, dev_id=dev_id)
-            myData = extract_scan_data(response_data, cur_client=cur_client, dev_id=dev_id, dev_name=dev_name)
-            
+            threat_data = extract_scan_data(response_data, cur_client=cur_client, dev_id=dev_id, dev_name=dev_name)
+          # this doesn't work right. Or else the above doesn't. 
+            threat_num = range(len(threat_data))
+            if threat_num > 0:
+                for i in range(len(threat_data)):
+                    print 'threat name', threat_data[i]['name']
+                    for j in range(len(threat_data[i]['traces'])):
+                        print 'trace: ', threat_data[i]['traces'][j]
+                raw_input('how do the keys look?')
 
     #produce_scan_results('united imaging')
 
