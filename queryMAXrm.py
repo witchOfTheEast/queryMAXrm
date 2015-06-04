@@ -137,12 +137,12 @@ def put_data(result_1, result_2, id_type, cur_client=None, devicetype=None):
             Client.master_device_list[dev_name.name] = dev_name
             Client.device_count += 1
     
-def extract_data(id_type, data=None, cur_client=None, devicetype=None):
+def extract_data(id_type, data=None, cur_client=None, devicetype=None, dev_id=None):
     """Filter and extract desired key:values from https GET resp and call
     put_data() to add attributes to instances
     """
     #This block is only for testing. 
-    #Removing and confirm correct function with https GET before deploy
+    #Remove and confirm correct function with https GET before deploy
     #if data:
     if data == None:
         if id_type == 'clientid':
@@ -162,9 +162,9 @@ def extract_data(id_type, data=None, cur_client=None, devicetype=None):
         
         elif id_type == 'mavscan':
             pass 
-        
+
         with open(filename, 'r') as f:
-            data = f.read() # data is either
+            data = f.read() 
             f.close()
         
         soup = bsoup(data, 'html5lib')
@@ -183,24 +183,46 @@ def extract_data(id_type, data=None, cur_client=None, devicetype=None):
 
 def extract_scan_data(response_data, cur_client, dev_id, dev_name):
     """Return a structure containing threat data"""
-    print 'Looking at', dev_name
-    print 'id is', dev_id
-    # find all threats
+   
+    #This block is only for testing. 
+    # Remove and confirm correct function of https GET before deploy
+    filename = './data/scans/%s_%s_scandata' % (cur_client.name, dev_id)
+    with open(filename, 'r') as f:
+        response_data = f.read()
+        f.close()
+
     soup = bsoup(response_data, 'html5lib')
     
     search_1 = 'threat'
-    
+    search_2 = 'trace'
+
     result_1 = soup.find_all(search_1)
     
     temp_threat_list = []
     match_num = len(result_1)
 
+    print 'Looking at', dev_name
+    print 'id is', dev_id
     print 'Threats found', match_num 
-    for i in range(match_num):
-        temp_threat_list = results_1[i].contents[1].string
-
-    for i in temp_threat_list:
-        print i
+    
+    for threat in result_1:
+        temp_threat_list.append(threat.contents[0].string)
+        print 'name', threat.contents[0].string
+        print 'status', threat.status.string
+        print 'count', threat.count.string
+       
+        # This works as well, but appending .traces is likely to be really unclear that is is really a find_all('traces').find_all(search_2)
+        #result_2 = threat.traces.find_all(search_2)
+        #for trace in result_2:
+        #    print trace.description.string 
+        
+        result_2 = threat.find_all(search_2)
+        trace_count = 1
+        for trace in result_2:
+            print '\nTrace #' + str(trace_count), trace.description.string
+            trace_count += 1
+        print '' 
+    print temp_threat_list
     raw_input("****")
 
 
