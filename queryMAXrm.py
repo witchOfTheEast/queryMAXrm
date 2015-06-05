@@ -203,17 +203,17 @@ def extract_scan_data(response_data, cur_client, dev_id, dev_name):
     # Each trace_list contains the paths for each trace dealt under that particular threat
 
     threat_list = []
-    threat_dict = {}
-    trace_list = []
-    threat_dict['dev_id'] = dev_id
 
     match_num = len(result_1)
 
     print 'Looking at', dev_name
-    print 'id is', dev_id
-    print 'Threats found', match_num 
+    print 'ID is', dev_id
+    print 'Number of Threats found', match_num 
     
     for threat in result_1:
+        threat_dict = {}
+        trace_list = []
+        threat_dict['dev_id'] = dev_id
         threat_dict['name'] = threat.contents[0].string
         threat_dict['status'] = threat.status.string
         threat_dict['count'] = threat.count.string
@@ -243,8 +243,6 @@ def extract_scan_data(response_data, cur_client, dev_id, dev_name):
         threat_dict['traces'] = trace_list
 
         threat_list.append(threat_dict)
-
-    raw_input("****")
 
     return threat_list
 
@@ -326,14 +324,14 @@ def main():
             dev_id = cur_device.id
             response_data = acquire_data(id_type, cur_client=cur_client, dev_id=dev_id)
             threat_data = extract_scan_data(response_data, cur_client=cur_client, dev_id=dev_id, dev_name=dev_name)
-          # this doesn't work right. Or else the above doesn't. 
+            print 'Near end of main, displaying dict info\n'
             threat_num = range(len(threat_data))
             if threat_num > 0:
                 for i in range(len(threat_data)):
                     print 'threat name', threat_data[i]['name']
                     for j in range(len(threat_data[i]['traces'])):
                         print 'trace: ', threat_data[i]['traces'][j]
-                raw_input('how do the keys look?')
+                raw_input('Is the dict information displaying correctly?')
 
     #produce_scan_results('united imaging')
 
