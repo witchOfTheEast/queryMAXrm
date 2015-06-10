@@ -16,32 +16,45 @@ from bs4 import BeautifulSoup as bsoup
 # Global variables
 api_key = '6p3t2wsX2nOyUwjNAN5JXLHJRGzT3SGN'
 query_server = 'www.systemmonitor.us'
-client_list = {}
-client_list_payload = {'service': 'list_clients'}
-
-site_list_payload = {'service': 'list_sites', 'clientid': '204379'}
 
 class Client:
-    """Client object to hold client_name, client_id, site_id, device_id(s) etc."""
-   
-    client_count = 0
-    device_count = 0
-    master_device_list = {} 
+    """Client object to hold data.
 
-    def __init__(self, name, client_id):
+    Attributes:
+        name (str) : Client name
+        id (int) : Client ID number
+        site_name_dict (dict) : {'site name': 'site id'}
+        site_id_dict (dict) : {'site id': 'site name'}
+        device_name_dict (dict) : {'device name': device instance}
+        device_id_dict (dict) : {'device id': device instance}
+        
+        Client.client_count : Number of client instances
+        Client.inst_by_name (dict) : {'client name': 'client id'}
+        Client.inst_by_id (dict) : {'client id': 'client name'}
+    """
+    
+    client_count = 0
+    inst_by_name = {}
+    inst_by_id = {}
+
+    def __init__(self, name, id):
+        """Initialize Client instance with name and id.
+
+        Args:
+            name (str) : Client name 
+            id (int) : Client ID 
+        """
         self.name = name
-        self.client_id = client_id
-        self.site_list = {}
-        self.device_list = {}
+        self.id = id
+        self.site_name_dict = {}
+        self.site_id_dict = {}
+        self.device_name_dict = {}
+        self.device_id_dict = {}
 
         Client.client_count += 1
 
-    def dispClient(self):
-        print 'Client name: ', self.name
-        'Client id: ', self.client_id
-
-    def dispCount(self):
-        print 'Total clients: %d' % Client.client_count
+        Client.inst_by_name[name] = self
+        Client.inst_by_id[id] = self
 
 class Device():
     """Device object with associated attributes.
@@ -54,291 +67,203 @@ class Device():
         client_name : Associated client name
         client_id : Associated client ID number
         threat_list (list) : List of dictionaries, 1 per threat
-
+        
+        Device.device_count (int) : Number of device instances
+        Device.inst_by_name (dict) : {'device name': device instance}
+        Device.inst_by_id (dict) : {'device id': device instance}
     """
+    
+    device_count = 0
+    inst_by_name = {}
+    inst_by_id = {}
+
     def __init__(self, name, id):
-        """Initialize the Device object with basic information.
+        """Initilize Device instance with name and id.
 
-        Args:
-            name : Device hostname/computer name
-            id : Device ID number
-            site_name : Associated site name
-            site_id : Associated site ID number
-            client_name : Associated client name
-            client_id : Associated client ID number
-
+        Args: 
+            name (str) : Device name 
+            id (int) : Device ID number
         """
+
         self.name = name
         self.id = id
-        self.site_name = ''
-        self.site_id = ''
-        self.client_name = ''
-        self.client_id = ''
+        self.client_name = None
+        self.client_id = None
+        self.site_name = None
+        self.site_id = None
         self.threat_list = []
-
-    def get_id(self):
-       return self.id 
-
-def dispSites():
-    print '\n***Client name: ID***\n***\tSite name: ID***\n'
-    for i in client_list:
-        print i, ':', client_list[i].client_id
-        for g in client_list[i].site_list:
-            print '\t', g, ':', client_list[i].site_list[g]
+        
+        Device.inst_by_name[name] = self
+        Device.inst_by_id[id] = self
 
 def dispClients():
-    print '\n***Client name: ID***\n'
-    for i in client_list:
-        print i, ':', client_list[i].client_id
+    """Iterate over Clients.inst_by_name and display client names and IDs"""
+    print '\n***Client Name: Client ID***\n'
+    for inst in Client.inst_by_name.values():
+        print inst.name, ':', inst.id
 
-def dispDevices():
-    """Display gathered devices and deviceIDs"""
-    for cur_client in client_list.values():
-        print cur_client.name
-        print 'Device name\tID'
-        for target in cur_client.device_list:
-            print cur_client.device_list[target].name, cur_client.device_list[target].id
-            print ''
-
-def get_id(cur_client, target):
-    """Take client and device name, return Device ID"""
-    if client_list[cur_client].device_list.has_key(target):
-        return client_list[cur_client].device_list[target].id
-    else:
-        print ''
-        print '%s was not found in %s device list' % (target.upper(), cur_client.capitalize())
-        return ''
-
-def put_data(result_1, result_2, id_type, cur_client=None, devicetype=None):
-    """Add key:values taken from get(s) to Client instances.
-       result_1 should be parent tag (i.e all_name)
-       result_2 should be child tag (i.e. clientid or siteid)
+def dispSites():
+    """Iterate over site_name_dict for each Client.inst_by_name.value and
+    display site names and IDs
     """
-    for i in range(len(result_1)):
-        tmp = unicode(result_1[i].string)
-        val_1 = tmp[7:-2].lower()
-        val_2 = unicode(result_2[i].string).lower()
-
-        if id_type == 'clientid':
-            client_list[val_1] = Client(val_1, val_2)
-        
-        elif id_type == 'siteid':
-            cur_client.site_list[val_1] = val_2
-
-        elif id_type == 'deviceid':
-            tmp = unicode(result_1[i].contents[1].string)
-            dev_name = tmp[7:-2].lower()
-            dev_id = unicode(result_1[i].contents[0].string)
-           
-            dev_name = Device(dev_name, dev_id)
-            
-            cur_client.device_list[dev_name.name] = dev_name 
-
-            Client.master_device_list[dev_name.name] = dev_name
-            Client.device_count += 1
     
-def extract_data(id_type, data=None, cur_client=None, devicetype=None, dev_id=None):
-    """Filter and extract desired key:values from https GET resp and call
-    put_data() to add attributes to instances
-    """
-    #This block is only for testing. 
-    #Remove and confirm correct function with https GET before deploy
-    #if data:
-    if data == None:
-        if id_type == 'clientid':
-            filename = './data/tempFile'
-            search_1 = 'name'
-            search_2 = 'clientid'
+    for inst in Client.inst_by_name.values():
+        print '\n***Client Name: Client ID***\n'
+        print inst.name, ':', inst.id
+        print '\n\t***Site Name: Site ID***\n'
 
-        elif id_type == 'siteid':
-            filename = './data/%s_siteData' % cur_client.client_id
-            search_1 = 'name'
-            search_2 = 'siteid'
-
-        elif id_type == 'deviceid':
-            filename = './data/devices/%s_%s_deviceData' % (cur_client.client_id, devicetype)
-            search_1 = devicetype
-            search_2 = 'id'
+        for key in inst.site_name_dict.keys():
+            print '\t',key, ':', inst.site_name_dict[key]
         
-        elif id_type == 'mavscan':
-            pass 
+        for id in inst.site_id_dict.keys():
+            print '\t',inst.site_id_dict[id], ':', id 
 
-        with open(filename, 'r') as f:
+def dispDevicesAll():
+    """Iterate over Devices.inst_by_name and display device names and IDs"""
+    print '\n***Device Name: Device ID***\n'
+    for inst in Devices.inst_by_name.values():
+        print inst.name, ':', inst.id
+
+def create_dev_inst(input):
+    """Create Device instance from response data"""
+    pass
+
+def create_client_inst(data):
+    """Create Client instance from response data"""
+    result_1 = data[0]
+    result_2 = data[1]
+    data_type = data[2]
+
+    for i in range(len(result_1)):
+        temp = unicode(result_1[i].string)
+        value_1 = temp[7:-2].lower()
+        value_2 = int(result_2[i].string)
+    
+        if data_type == 'client':
+            name = value_1
+            id = value_2
+            inst = Client(name, id)
+            Client.inst_by_name[name] = inst
+            Client.inst_by_id[id] = inst 
+
+def append_site_info(data, client_id):
+    """Append site info from response data to client and device instances passed as parameters"""
+    result_1 = data[0]
+    result_2 = data[1]
+    data_type = data[2]
+
+    for i in range(len(result_1)):
+        temp = unicode(result_1[i].string)
+        value_1 = temp[7:-2].lower()
+        value_2 = int(result_2[i].string)
+    
+        if data_type == 'site':
+            name = value_1
+            id = value_2
+            inst = Client.inst_by_id[client_id]
+            inst.site_name_dict[name] = id
+            inst.site_id_dict[id] = name 
+
+def parse_response(data, data_type, client_id=None):
+    """Accept raw response, pull out desired data and return parsed response data"""
+    # 'filename' is to skip GETs to server for faster testing
+    if data_type == 'client':
+        filename = './data/tempFile'
+        search_1 = 'name'
+        search_2 = 'clientid'
+
+    elif data_type == 'site':
+        filename = './data/%s_siteData' % client_id 
+        search_1 = 'name'
+        search_2 = 'siteid'
+
+    elif data_type == 'device':
+        filename = './data/devices/%s_%s_deviceData' % (cur_client.client_id, devicetype)
+        search_1 = devicetype
+        search_2 = 'id'
+    
+    elif data_type == 'mavscan':
+        pass 
+    
+    # This block makes use of 'filename' for faster testing
+    if data == None:
+         with open(filename, 'r') as f:
             data = f.read() 
             f.close()
-        
-        soup = bsoup(data, 'html5lib')
+         soup = bsoup(data, 'html5lib')
          
     else: 
         soup = bsoup(data.text, 'html5lib')
-
+    # If the above block relating to 'filename' is removed, this following line
+    # must be uncommented and functionality tested
     #soup = bsoup(data.text, 'html5lib')
     result_1 = soup.find_all(search_1)
     result_2 = soup.find_all(search_2)
     
     if len(result_1) != len(result_2):
-        #print "\nNumber of client names and ids do not match"
+        print "\nNumber of client names and ids do not match"
         pass
-    return result_1, result_2
 
-def extract_scan_data(response_data, cur_client, dev_id, dev_name):
-    """Return a structure containing threat data"""
-   
-    #This block is only for testing. 
-    # Remove and confirm correct function of https GET before deploy
-    filename = './data/scans/%s_%s_scandata' % (cur_client.name, dev_id)
-    with open(filename, 'r') as f:
-        response_data = f.read()
-        f.close()
+    return (result_1, result_2, data_type)
 
-    soup = bsoup(response_data, 'html5lib')
+def parse_scan_response(input):
+    """Accept raw response, pull out desired threat data and return parsed response data"""
+    pass
     
-    search_1 = 'threat'
-    search_2 = 'trace'
-
-    result_1 = soup.find_all(search_1)
-   
-    # Each device will receive one threat list containing a dictionary for each threat.
-    # Each threat_dict contains the name, status, type etc. and a trace_list
-    # Each trace_list contains the paths for each trace dealt under that particular threat
-
-    threat_list = []
-
-    match_num = len(result_1)
-
-    print 'Looking at', dev_name
-    print 'ID is', dev_id
-    print 'Number of Threats found', match_num 
-    
-    for threat in result_1:
-        threat_dict = {}
-        trace_list = []
-        threat_dict['dev_id'] = dev_id
-        threat_dict['name'] = threat.contents[0].string
-        threat_dict['status'] = threat.status.string
-        threat_dict['count'] = threat.count.string
-        print 'name', threat.contents[0].string
-        print 'status', threat.status.string
-        print 'count', threat.count.string
-       
-        # This works as well, but appending .traces is likely to be really unclear that is is really a find_all('traces').find_all(search_2)
-        #result_2 = threat.traces.find_all(search_2)
-        #for trace in result_2:
-        #    print trace.description.string 
-        
-        result_2 = threat.find_all(search_2)
-        
-        for trace in result_2:
-            trace_list.append(trace.description.string)
-            print 'trace', trace.description.string
-        
-        for sib in threat.parent.previous_siblings:
-            if sib.name == 'start':
-                threat_dict['start'] = sib.string 
-                print 'start', sib.string
-            if sib.name == 'type':
-                threat_dict['type'] = sib.string 
-                print 'type', sib.string
-
-        threat_dict['traces'] = trace_list
-
-        threat_list.append(threat_dict)
-
-    return threat_list
-
-def acquire_data(id_type, cur_client=None, devicetype=None, dev_id=None):
-    """https GET response from server and call extract_data() in it"""
-    if id_type == 'clientid':
+def get_response(data_type, client_id=None):
+    """Request GET from API server based on desired type, return raw response data"""
+    if data_type == 'client':
         payload = {'service': 'list_clients'}
         
         #Uncomment and test https GET for deploy
         #resp = requests.get('https://%s/api/?apikey=%s&' % (query_server, api_key), params=payload)
         resp = None
-
-    if id_type == 'siteid':
-        payload = {'service': 'list_sites', 'clientid': cur_client.client_id}
+    
+    if data_type == 'site':
+        payload = {'service': 'list_sites', 'clientid': client_id}
         #Uncomment and test https GET for deploy
         #resp = requests.get('https://%s/api/?apikey=%s&' % (query_server, api_key), params=payload)
         resp = None
 
-    if id_type == 'deviceid':
+    if data_type == 'deviceid':
         payload = {'service': 'list_devices_at_client', 'clientid': cur_client.client_id, 'devicetype': devicetype}
 
         #Uncomment and test https GET for deploy
         #resp = requests.get('https://%s/api/?apikey=%s&' % (query_server, api_key), params=payload)
         resp = None 
-    if id_type == 'mavscan':
+    if data_type == 'mavscan':
         payload = {'service': 'list_mav_scans', 'deviceid': dev_id, 'details': 'YES'}
         #resp = requests.get('https://%s/api/?apikey=%s&' % (query_server, api_key), params=payload)
         resp = None
         
     return resp
 
-def write_out_data():
-    """For dev, write out data to use while testing"""
+def gen_client_info():
+    """Generate Client instances with info"""
+    data_type = 'client'
+    raw_response = get_response(data_type)
+    parsed_data = parse_response(raw_response, data_type)
+    create_client_inst(parsed_data)
 
-    with open('./data/devices/%s_%s_deviceData' % (cur_client.client_id, devicetype), 'w') as f:
-        f.write(resp.text.encode('utf-8'))
-        f.close()
+def gen_site_info():
+    """Generate Site info and put into Client instances"""
+    data_type = 'site'
+    for client_id in Client.inst_by_id.keys(): 
+        raw_response = get_response(data_type, client_id)
+        parsed_data = parse_response(raw_response, data_type, client_id)
+        append_site_info(parsed_data, client_id)
 
-def produce_scan_results(client_name=None):
-    id_type = 'mavscan'
-    
-    cur_client = client_list[client_name]
-    print 'Gather scan data for ', cur_client.name
-    for cur_client in client_list.values():
-        for dev_id in cur_client.device_list.values():
-            response_data = acquire_data(id_type, cur_client=cur_client, dev_id=dev_id)
-        
 def main():
+    """Call the functions to generate instances and populate them with data"""
+   
+    gen_client_info()
 
-    # Stanza for client list
-    id_type = 'clientid'
-    response_data = acquire_data(id_type)
-    data_1, data_2 = extract_data(id_type, response_data)
-    put_data(data_1, data_2, id_type)
-    #dispClients()
+    gen_site_info()
     
-    print ''
     
-    # Stanza for site list
-    id_type = 'siteid'
-    for cur_client in client_list.values():
-        response_data = acquire_data(id_type, cur_client)
-        data_1, data_2 = extract_data(id_type, response_data, cur_client)
-        put_data(data_1, data_2, id_type, cur_client)
-    #dispSites()
     
-    id_type = 'deviceid'
-    device_type_list = ['workstation', 'server']
-    for device_type in device_type_list:
-        for cur_client in client_list.values():
-            response_data = acquire_data(id_type, cur_client, device_type)
-            data_1, data_2 = extract_data(id_type, response_data, cur_client, device_type)
-            put_data(data_1, data_2, id_type, cur_client, device_type)
-
-    id_type = 'mavscan'
-    for cur_client in client_list.values():
-        for cur_device in cur_client.device_list.values():
-            dev_name = cur_device.name
-            dev_id = cur_device.id
-            response_data = acquire_data(id_type, cur_client=cur_client, dev_id=dev_id)
-            threat_data = extract_scan_data(response_data, cur_client=cur_client, dev_id=dev_id, dev_name=dev_name)
-            print 'Near end of main, displaying dict info\n'
-            threat_num = range(len(threat_data))
-            if threat_num > 0:
-                for i in range(len(threat_data)):
-                    print 'threat name', threat_data[i]['name']
-                    for j in range(len(threat_data[i]['traces'])):
-                        print 'trace: ', threat_data[i]['traces'][j]
-                raw_input('Is the dict information displaying correctly?')
-
-    #produce_scan_results('united imaging')
-
-    #dispDevices()
-    temp_list = ['imac008', 'imac020']
-    for target in temp_list:
-        print '\nDevice %s' % target.upper(), get_id('cherokee', target=target) 
+    dispSites()
 
 if __name__ == '__main__':
     main()
+
