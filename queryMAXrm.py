@@ -115,18 +115,25 @@ def dispSites():
         for key in inst.site_name_dict.keys():
             print '\t',key, ':', inst.site_name_dict[key]
         
-        for id in inst.site_id_dict.keys():
-            print '\t',inst.site_id_dict[id], ':', id 
 
 def dispDevicesAll():
     """Iterate over Devices.inst_by_name and display device names and IDs"""
     print '\n***Device Name: Device ID***\n'
-    for inst in Devices.inst_by_name.values():
+    for inst in Device.inst_by_name.values():
         print inst.name, ':', inst.id
 
-def create_dev_inst(input):
+def create_dev_inst(data, client_id):
     """Create Device instance from response data"""
-    pass
+    result_1 = data[0]
+    result_2 = data[1]
+    data_type = data[2]
+    
+    for i in range(len(result_1)):
+        temp = unicode(result_1[i].contents[1].string)
+        dev_name = temp[7:-2].lower()
+        dev_id = int(result_1[i].contents[0].string)
+        
+        Device(dev_name, dev_id)        
 
 def create_client_inst(data):
     """Create Client instance from response data"""
@@ -142,9 +149,9 @@ def create_client_inst(data):
         if data_type == 'client':
             name = value_1
             id = value_2
-            inst = Client(name, id)
-            Client.inst_by_name[name] = inst
-            Client.inst_by_id[id] = inst 
+            Client(name, id)
+            #Client.inst_by_name[name] = inst
+            #Client.inst_by_id[id] = inst 
 
 def append_site_info(data, client_id):
     """Append site info from response data to client and device instances passed as parameters"""
@@ -166,7 +173,7 @@ def append_site_info(data, client_id):
 
 def parse_response(data, data_type, client_id=None):
     """Accept raw response, pull out desired data and return parsed response data"""
-    # 'filename' is to skip GETs to server for faster testing
+    # 'filename' can be used to skip GETs to server for faster testing
     if data_type == 'client':
         filename = './data/tempFile'
         search_1 = 'name'
@@ -178,8 +185,8 @@ def parse_response(data, data_type, client_id=None):
         search_2 = 'siteid'
 
     elif data_type == 'device':
-        filename = './data/devices/%s_%s_deviceData' % (cur_client.client_id, devicetype)
-        search_1 = devicetype
+        filename = './data/devices/%s_devicedata' % client_id
+        search_1 = ['workstation', 'server'] 
         search_2 = 'id'
     
     elif data_type == 'mavscan':
@@ -193,8 +200,8 @@ def parse_response(data, data_type, client_id=None):
          soup = bsoup(data, 'html5lib')
          
     else: 
-        soup = bsoup(data.text, 'html5lib')
-    # If the above block relating to 'filename' is removed, this following line
+        soup = bsoup(data, 'html5lib')
+    # If the above block opening 'filename' is removed, this following line
     # must be uncommented and functionality tested
     #soup = bsoup(data.text, 'html5lib')
     result_1 = soup.find_all(search_1)
@@ -225,12 +232,17 @@ def get_response(data_type, client_id=None):
         #resp = requests.get('https://%s/api/?apikey=%s&' % (query_server, api_key), params=payload)
         resp = None
 
-    if data_type == 'deviceid':
-        payload = {'service': 'list_devices_at_client', 'clientid': cur_client.client_id, 'devicetype': devicetype}
+    if data_type == 'device':
+        device_type = ('workstation', 'server')
+        resp = ''
+        for dev_type in device_type:
+            payload = {'service': 'list_devices_at_client', 'clientid': client_id, 'devicetype': dev_type}
+            #Uncomment and test https GET for deploy
+            #temp_resp = requests.get('https://%s/api/?apikey=%s&' % (query_server, api_key), params=payload)
+            #resp += temp_resp.text
 
-        #Uncomment and test https GET for deploy
-        #resp = requests.get('https://%s/api/?apikey=%s&' % (query_server, api_key), params=payload)
-        resp = None 
+            resp = None
+
     if data_type == 'mavscan':
         payload = {'service': 'list_mav_scans', 'deviceid': dev_id, 'details': 'YES'}
         #resp = requests.get('https://%s/api/?apikey=%s&' % (query_server, api_key), params=payload)
@@ -253,6 +265,14 @@ def gen_site_info():
         parsed_data = parse_response(raw_response, data_type, client_id)
         append_site_info(parsed_data, client_id)
 
+def gen_device_info():
+    """Generate Device info and put into Device instances"""
+    data_type = 'device'
+    for client_id in Client.inst_by_id.keys():
+        raw_response = get_response(data_type, client_id)
+        parsed_data = parse_response(raw_response, data_type, client_id)
+        create_dev_inst(parsed_data, client_id)
+
 def main():
     """Call the functions to generate instances and populate them with data"""
    
@@ -260,9 +280,13 @@ def main():
 
     gen_site_info()
     
-    
-    
+    gen_device_info()
+
+    dispClients()    
+    raw_input('')
     dispSites()
+    raw_input('')
+    dispDevicesAll()
 
 if __name__ == '__main__':
     main()

@@ -100,8 +100,7 @@ def dispDevices():
         print cur_client.name
         print 'Device name\tID'
         for target in cur_client.device_list:
-            print cur_client.device_list[target].name, cur_client.device_list[target].id
-            print ''
+            print cur_client.device_list[target].name, ':', cur_client.device_list[target].id
 
 def get_id(cur_client, target):
     """Take client and device name, return Device ID"""
@@ -132,7 +131,7 @@ def put_data(result_1, result_2, id_type, cur_client=None, devicetype=None):
             tmp = unicode(result_1[i].contents[1].string)
             dev_name = tmp[7:-2].lower()
             dev_id = unicode(result_1[i].contents[0].string)
-            client_id = client_list[cur_client] 
+            client_id = cur_client.client_id 
             
             dev_inst = Device(dev_name, dev_id, client_id)
              
@@ -159,7 +158,7 @@ def extract_data(id_type, data=None, cur_client=None, devicetype=None, dev_id=No
             search_2 = 'siteid'
 
         elif id_type == 'deviceid':
-            filename = './data/devices/%s_%s_deviceData' % (cur_client.client_id, devicetype)
+            filename = './data/devices/old/%s_%s_deviceData' % (cur_client.client_id, devicetype)
             search_1 = devicetype
             search_2 = 'id'
         
@@ -360,12 +359,12 @@ def main():
 
             print '\n^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^'
     '''
-    get_device_threat_data('optiplex001')
+    #get_device_threat_data('optiplex001')
     #produce_scan_results('united imaging')
 
     #dispClients()
     #dispSites()
-   # dispDevices()
+    dispDevices()
 
 if __name__ == '__main__':
     main()
