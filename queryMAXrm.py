@@ -122,6 +122,34 @@ def dispDevicesAll():
     for inst in Device.inst_by_name.values():
         print inst.name, ':', inst.id
 
+def disp_device_scan(device):
+    """Display the threat_dict data is a resonable way"""
+    
+    try:
+        device_id = Device.inst_by_name[device].id
+        device_name = device
+    except KeyError:
+        pass # fallback to 'device' parameter is id
+    try:
+        device_name = Device.inst_by_id[device].name
+        device_id = device
+    except KeyError:
+        pass
+
+    cur_list = Device.inst_by_id[device_id].threat_list
+    
+    print '\n***%s shows %s threats***' % (device_name, len(cur_list))
+    print '\n***Threats***'
+    
+    for threat in cur_list:
+        print '\t%s\t%s\t%s' % (threat['name'], threat['status'], threat['start'])
+  
+    print '\n***Traces***'
+    for threat in cur_list:
+        print '\t%s' % threat['name']
+        for trace in threat['traces']:
+            print '\t\t%s' % trace
+
 def create_dev_inst(data, client_id):
     """Create Device instance from response data"""
     result_1 = data[0]
@@ -208,16 +236,88 @@ def parse_response(data, data_type, client_id=None):
     result_2 = soup.find_all(search_2)
     
     if len(result_1) != len(result_2):
-        print "\nNumber of client names and ids do not match"
-        pass
-
+        pass 
+    
     return (result_1, result_2, data_type)
 
-def parse_scan_response(input):
+def parse_scan_response(data, device_id):
     """Accept raw response, pull out desired threat data and return parsed response data"""
-    pass
+
+    device_name = Device.inst_by_id[device_id].name
+
+    #This block is only for testing. 
+    # Remove and confirm correct function of https GET before deploy
+    if data == None:
+        filename = './data/scans/%s_scandata' % (device_id)
+        with open(filename, 'r') as f:
+            response_data = f.read()
+            f.close()
+
+        soup = bsoup(response_data, 'html5lib')
     
-def get_response(data_type, client_id=None):
+    else:
+        soup = bsoup(data.text, 'html5lib')
+
+    search_1 = 'threat'
+    search_2 = 'trace'
+
+    result_1 = soup.find_all(search_1)
+   
+    # Each device will receive one threat list containing a dictionary for each threat.
+    # Each threat_dict contains the name, status, type etc. and a trace_list
+    # Each trace_list contains the paths for each trace dealt with under that particular threat
+
+    threat_list = []
+
+    match_num = len(result_1)
+    
+    for threat in result_1:
+        
+        threat_dict = {}
+        trace_list = []
+        threat_dict['dev_id'] = device_id
+        threat_dict['name'] = threat.contents[0].string
+        threat_dict['status'] = threat.status.string
+       
+        result_2 = threat.find_all(search_2)
+        
+        t = 0
+        for trace in result_2:
+            trace_list.append(trace.description.string)
+            t += 1
+
+        # status FAILED_TO_QUARANTINE returns a threat.count of NoneType
+        if threat.count != None:
+            threat_dict['count'] = threat.count.string
+        else:
+            threat_dict['count'] = t
+        
+        for sib in threat.parent.previous_siblings:
+            if sib.name == 'start':
+                threat_dict['start'] = sib.string 
+            
+            if sib.name == 'type':
+                threat_dict['type'] = sib.string 
+        '''        
+        print ''
+        print 'name', threat_dict['name']
+        print 'type', threat_dict['type']
+        print 'status', threat_dict['status'] 
+        print 'start', threat_dict['start']
+        print 'Number of traces', threat_dict['count'] 
+        print '\ntraces found'
+        for i in range(len(trace_list)):
+            count = i + 1
+            print 'trace', count, trace_list[i]
+        print ''
+        '''
+        threat_dict['traces'] = trace_list
+
+        threat_list.append(threat_dict)
+
+    return threat_list
+
+def get_response(data_type, client_id=None, device_id=None):
     """Request GET from API server based on desired type, return raw response data"""
     if data_type == 'client':
         payload = {'service': 'list_clients'}
@@ -243,9 +343,10 @@ def get_response(data_type, client_id=None):
 
             resp = None
 
-    if data_type == 'mavscan':
-        payload = {'service': 'list_mav_scans', 'deviceid': dev_id, 'details': 'YES'}
+    if data_type == 'scan':
+        payload = {'service': 'list_mav_scans', 'deviceid': device_id, 'details': 'YES'}
         #resp = requests.get('https://%s/api/?apikey=%s&' % (query_server, api_key), params=payload)
+        
         resp = None
         
     return resp
@@ -273,20 +374,52 @@ def gen_device_info():
         parsed_data = parse_response(raw_response, data_type, client_id)
         create_dev_inst(parsed_data, client_id)
 
-def main():
-    """Call the functions to generate instances and populate them with data"""
-   
-    gen_client_info()
+def gen_scan_info_all():
+    """Generate scan info for each device in Device.inst"""
+    for device_id in Device.inst_by_id.keys():
+        gen_device_scan_info(device_id)
 
-    gen_site_info()
+def gen_device_scan_info(device):
+    """Take either device name or id, get the threat_dict and append it to the Device instance"""
+    data_type = 'scan'
     
-    gen_device_info()
+    try:
+        device_id = Device.inst_by_name[device].id
+        device_name = device
+    except KeyError:
+        pass # fallback to 'device' parameter is id
+    try:
+        device_name = Device.inst_by_id[device].name
+        device_id = device
+    except KeyError:
+        pass
 
-    dispClients()    
-    raw_input('')
-    dispSites()
-    raw_input('')
-    dispDevicesAll()
+    raw_response = get_response(data_type, device_id=device_id)
+    parsed_data = parse_scan_response(raw_response, device_id)
+    Device.inst_by_id[device_id].threat_list = parsed_data
+    
+def populate_database():
+    """Call the functions to generate instances and populate them with data"""
+    gen_client_info()
+    gen_site_info()
+    gen_device_info()
+    gen_scan_info_all()
+
+def query_user():
+    target = raw_input('\n>').lower()
+    disp_device_scan(target)
+    query_user()
+
+def main():
+    print '\nGathering information and building data structures.\nThis will take a moment....'
+    populate_database()
+    
+    query_user()
+#    dispClients()    
+#    raw_input('')
+#    dispSites()
+#    raw_input('')
+#    dispDevicesAll()
 
 if __name__ == '__main__':
     main()
