@@ -77,25 +77,31 @@ class Device():
     inst_by_name = {}
     inst_by_id = {}
 
-    def __init__(self, name, id):
+    def __init__(self, name, id, client_id):
         """Initilize Device instance with name and id.
 
         Args: 
             name (str) : Device name 
             id (int) : Device ID number
+            client_id : Associated client ID number
         """
 
         self.name = name
         self.id = id
-        self.client_name = None
-        self.client_id = None
+        self.client_id = client_id
         self.site_name = None
         self.site_id = None
         self.threat_list = []
+       
+        client_name = Client.inst_by_id[client_id].name
+        self.client_name = client_name
         
         Device.inst_by_name[name] = self
         Device.inst_by_id[id] = self
-
+       
+        Client.inst_by_id[client_id].device_name_dict[name] = self
+        Client.inst_by_id[client_id].device_id_dict[id] = self
+    
 def dispClients():
     """Iterate over Clients.inst_by_name and display client names and IDs"""
     print '\n***Client Name: Client ID***\n'
@@ -115,12 +121,39 @@ def dispSites():
         for key in inst.site_name_dict.keys():
             print '\t',key, ':', inst.site_name_dict[key]
         
-
 def dispDevicesAll():
     """Iterate over Devices.inst_by_name and display device names and IDs"""
     print '\n***Device Name: Device ID***\n'
     for inst in Device.inst_by_name.values():
         print inst.name, ':', inst.id
+
+def disp_device_names():
+    """Display device names in three columns"""
+    client_dict = {}
+    #for inst in Device.inst_by_name.values():
+    #    name_list.append(inst.name)
+    
+    for client_inst in Client.inst_by_name.values():
+        client_name = client_inst.name
+        name_list = []
+        for device_name in client_inst.device_name_dict.keys():
+            name_list.append(device_name)
+        
+        client_dict[client_name] = name_list
+
+    for client_name in client_dict.keys():
+        name_rows = []
+        name_list = client_dict[client_name]
+        print '\n***%s %s devices***' % (client_name, len(name_list))
+
+        i = 0
+        while i < len(name_list):
+            name_rows.append(name_list[i:i+6])
+            i += 6  
+     
+        col_width = max(len(device_name) for row in name_rows for device_name in row) + 1 # padding
+        for row in name_rows:
+            print ''.join(word.ljust(col_width) for word in row)
 
 def disp_device_scan(device):
     """Display the threat_dict data is a resonable way"""
@@ -150,6 +183,8 @@ def disp_device_scan(device):
         for trace in threat['traces']:
             print '\t\t%s' % trace
 
+    raw_input('\nPress any key to continue')
+
 def create_dev_inst(data, client_id):
     """Create Device instance from response data"""
     result_1 = data[0]
@@ -161,7 +196,7 @@ def create_dev_inst(data, client_id):
         dev_name = temp[7:-2].lower()
         dev_id = int(result_1[i].contents[0].string)
         
-        Device(dev_name, dev_id)        
+        Device(dev_name, dev_id, client_id)        
 
 def create_client_inst(data):
     """Create Client instance from response data"""
@@ -403,11 +438,16 @@ def populate_database():
     gen_client_info()
     gen_site_info()
     gen_device_info()
-    gen_scan_info_all()
+#    gen_scan_info_all()
 
 def query_user():
+    disp_device_names() 
+    
     target = raw_input('\n>').lower()
-    disp_device_scan(target)
+    if target == 'quit':
+        exit()
+    else:
+        disp_device_scan(target)
     query_user()
 
 def main():
