@@ -12,7 +12,7 @@
 
 import requests
 from bs4 import BeautifulSoup as bsoup
-
+from datetime import date
 # Global variables
 api_key = '6p3t2wsX2nOyUwjNAN5JXLHJRGzT3SGN'
 query_server = 'www.systemmonitor.us'
@@ -155,9 +155,9 @@ def disp_device_names():
         for row in name_rows:
             print ''.join(word.ljust(col_width) for word in row)
 
-def disp_device_scan(device):
+def disp_threats(threat_list):
     """Display the threat_dict data is a resonable way"""
-    
+    '''
     try:
         device_id = Device.inst_by_name[device].id
         device_name = device
@@ -172,18 +172,37 @@ def disp_device_scan(device):
     cur_list = Device.inst_by_id[device_id].threat_list
     
     print '\n***%s shows %s threats***' % (device_name, len(cur_list))
+    '''
     print '\n***Threats***'
     
-    for threat in cur_list:
-        print '\t%s\t%s\t%s' % (threat['name'], threat['status'], threat['start'])
+    for threat in threat_list:
+        if threat['type']:
+            print '\t%s\t%s\t%s\t%s\t%s' % (threat['name'], threat['category'], threat['type'], threat['status'], threat['start'])
+        else:
+            print '\t%s\t%s\t%s' % (threat['name'], threat['status'], threat['start'])
   
     print '\n***Traces***'
-    for threat in cur_list:
+    for threat in threat_list:
         print '\t%s' % threat['name']
         for trace in threat['traces']:
             print '\t\t%s' % trace
 
     raw_input('\nPress any key to continue')
+
+def device_id_name(device):
+    """Return a tuple of ('device name', id)"""
+    try:
+        device_id = Device.inst_by_name[device].id
+        device_name = device
+    except KeyError:
+        pass # fallback to 'device' parameter is id
+    try:
+        device_name = Device.inst_by_id[device].name
+        device_id = device
+    except KeyError:
+        pass
+    
+    return (device_name, device_id)
 
 def create_dev_inst(data, client_id):
     """Create Device instance from response data"""
@@ -310,10 +329,11 @@ def parse_scan_response(data, device_id):
         
         threat_dict = {}
         trace_list = []
+        threat_dict['dev_name'] = device_name
         threat_dict['dev_id'] = device_id
         threat_dict['name'] = threat.contents[0].string
         threat_dict['status'] = threat.status.string
-       
+        threat_dict['category'] = threat.category.string 
         result_2 = threat.find_all(search_2)
         
         t = 0
@@ -433,12 +453,50 @@ def gen_device_scan_info(device):
     parsed_data = parse_scan_response(raw_response, device_id)
     Device.inst_by_id[device_id].threat_list = parsed_data
     
+def scan_from_range(device, date_range):
+    """Return the threat data for a device within a specified range
+  
+        Args:
+            device : Either device name (str) or device id (int)
+            date_range (list) : start date end date ['YYYY MM DD', 'YYYY MM DD']
+    """
+    
+    # for testing
+    #device = 'united-002'
+    #date_range = ['2015 01 15', '2015 03 23']
+    
+    device_name = device_id_name(device)[0]
+    device_id = device_id_name(device)[1]
+
+    start_year = int(date_range[0][0:4])
+    start_month = int(date_range[0][5:7])
+    start_day = int(date_range[0][8:10])
+    end_year = int(date_range[1][0:4])
+    end_month = int(date_range[1][5:7])
+    end_day = int(date_range[1][8:10])
+
+    start_date = date(start_year, start_month, start_day)
+    end_date = date(end_year, end_month, end_day)
+ 
+    cur_dev_inst = Device.inst_by_id[device_id]
+    cur_threat_list = cur_dev_inst.threat_list
+    
+    desired_threat_list = []
+    for threat in cur_threat_list:
+        date_str = threat['start']
+        test_date = date(int(date_str[0:4]), int(date_str[5:7]), int(date_str[8:10]))
+        
+        if start_date < test_date < end_date:
+            desired_threat_list.append(threat)
+            
+    return desired_threat_list
+
 def populate_database():
     """Call the functions to generate instances and populate them with data"""
     gen_client_info()
     gen_site_info()
     gen_device_info()
-#    gen_scan_info_all()
+    gen_scan_info_all()
 
 def query_user():
     disp_device_names() 
@@ -453,8 +511,10 @@ def query_user():
 def main():
     print '\nGathering information and building data structures.\nThis will take a moment....'
     populate_database()
-    
-    query_user()
+    narrow_threats = scan_from_range('united-002', ('2015 02 01', '2015 04 28'))
+    print 'Threats on united-002'
+    disp_threats(narrow_threats)
+    #query_user()
 #    dispClients()    
 #    raw_input('')
 #    dispSites()
@@ -463,4 +523,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-
