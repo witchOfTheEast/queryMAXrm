@@ -13,6 +13,8 @@
 import requests
 from bs4 import BeautifulSoup as bsoup
 from datetime import date
+from calendar import monthrange
+
 # Global variables
 api_key = '6p3t2wsX2nOyUwjNAN5JXLHJRGzT3SGN'
 query_server = 'www.systemmonitor.us'
@@ -175,22 +177,39 @@ def disp_threats(threat_list):
     '''
     print '\n***Threats***'
     
-    for threat in threat_list:
-        if threat['type']:
-            print '\t%s\t%s\t%s\t%s\t%s' % (threat['name'], threat['category'], threat['type'], threat['status'], threat['start'])
+    if len(threat_list) != 0:
+        for threat in threat_list:
+            print 'Threats for %s' % threat['dev_name']
+            if threat['type']:
+                print '\t%s\t%s\t%s\t%s\t%s' % (threat['name'], threat['category'], threat['type'], threat['status'], threat['start'])
+            else:
+                print '\t%s\t%s\t%s' % (threat['name'], threat['status'], threat['start'])
+      
+        print '\n***Traces***'
+        for threat in threat_list:
+            print '\t%s' % threat['name']
+            for trace in threat['traces']:
+                print '\t\t%s' % trace
         else:
-            print '\t%s\t%s\t%s' % (threat['name'], threat['status'], threat['start'])
-  
-    print '\n***Traces***'
-    for threat in threat_list:
-        print '\t%s' % threat['name']
-        for trace in threat['traces']:
-            print '\t\t%s' % trace
+            'No threats found. Hurray.'
 
-    raw_input('\nPress any key to continue')
+def client_id_name(client):
+    """Returna  tuple of ('client_name', client_id)"""
+    try:
+        client_id = Client.inst_by_name[client].id
+        client_name = client
+    except KeyError:
+        pass # fallback to 'client' parameter is id
+    try:
+        client_name = Client.inst_by_id[client].name
+        client_id = client
+    except KeyError:
+        pass
+    
+    return (client_name, client_id)
 
 def device_id_name(device):
-    """Return a tuple of ('device name', id)"""
+    """Return a tuple of ('device name', device_id)"""
     try:
         device_id = Device.inst_by_name[device].id
         device_name = device
@@ -454,7 +473,7 @@ def gen_device_scan_info(device):
     Device.inst_by_id[device_id].threat_list = parsed_data
     
 def scan_from_range(device, date_range):
-    """Return the threat data for a device within a specified range
+    """Return the threat_list for a device within a specified range
   
         Args:
             device : Either device name (str) or device id (int)
@@ -508,12 +527,35 @@ def query_user():
         disp_device_scan(target)
     query_user()
 
+def month_report(client_id, year, month):
+    """Return a threat report for the provided client and the desired month"""
+    client_id = client_id_name(client_id)[1]
+    client_name = client_id_name(client_id)[0]
+    first_day = 01
+    last_day = monthrange(year, month)[1]
+    client_threat_dict = {}
+
+    date_range = ['%i %02i %02i' % (year, month, first_day), '%i %02i %02i' % (year, month, last_day)]
+    print 'your range', date_range
+    
+    for device in Client.inst_by_id[client_id].device_id_dict.keys():
+        device_name = device_id_name(device)[0]
+        dev_threat_list = scan_from_range(device, date_range)
+    ######### This is not the right place to handle the device name
+        client_threat_dict[device_name] = dev_threat_list
+
+    print 'Threats for %s' % client_name
+    for device in client_threat_dict.keys():
+        print 'Device %s' % device
+        disp_threats(client_threat_dict[device])
+
 def main():
     print '\nGathering information and building data structures.\nThis will take a moment....'
     populate_database()
-    narrow_threats = scan_from_range('united-002', ('2015 02 01', '2015 04 28'))
-    print 'Threats on united-002'
-    disp_threats(narrow_threats)
+    #narrow_threats = scan_from_range('united-002', ('2015 02 01', '2015 04 28'))
+    #print 'Threats on united-002'
+    #disp_threats(narrow_threats)
+    month_report('mosm', 2015, 05)
     #query_user()
 #    dispClients()    
 #    raw_input('')
