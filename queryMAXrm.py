@@ -14,6 +14,7 @@ import requests
 from bs4 import BeautifulSoup as bsoup
 from datetime import date
 from calendar import monthrange
+from lxml import etree
 
 # Global variables
 api_key = '6p3t2wsX2nOyUwjNAN5JXLHJRGzT3SGN'
@@ -158,40 +159,29 @@ def disp_device_names():
             print ''.join(word.ljust(col_width) for word in row)
 
 def disp_threats(threat_list):
-    """Display the threat_dict data is a resonable way"""
-    '''
-    try:
-        device_id = Device.inst_by_name[device].id
-        device_name = device
-    except KeyError:
-        pass # fallback to 'device' parameter is id
-    try:
-        device_name = Device.inst_by_id[device].name
-        device_id = device
-    except KeyError:
-        pass
+    """Display the threat_dict data is a resonable way
+    
+        Args:
+            threat_list (list) : Minimum length is 1. Device name at index[0],
+                followed by a dictionary for each threat, if any at index[1:].
+    """
+    print '\n***Threats for %s***' % threat_list[0]
+    
+    if len(threat_list) == 1:
+        print 'No threats found on %s' % threat_list[0]
 
-    cur_list = Device.inst_by_id[device_id].threat_list
-    
-    print '\n***%s shows %s threats***' % (device_name, len(cur_list))
-    '''
-    print '\n***Threats***'
-    
-    if len(threat_list) != 0:
-        for threat in threat_list:
-            print 'Threats for %s' % threat['dev_name']
+    else:
+        for threat in threat_list[1:]:
             if threat['type']:
                 print '\t%s\t%s\t%s\t%s\t%s' % (threat['name'], threat['category'], threat['type'], threat['status'], threat['start'])
             else:
                 print '\t%s\t%s\t%s' % (threat['name'], threat['status'], threat['start'])
       
         print '\n***Traces***'
-        for threat in threat_list:
+        for threat in threat_list[1:]:
             print '\t%s' % threat['name']
             for trace in threat['traces']:
                 print '\t\t%s' % trace
-        else:
-            'No threats found. Hurray.'
 
 def client_id_name(client):
     """Returna  tuple of ('client_name', client_id)"""
@@ -501,6 +491,7 @@ def scan_from_range(device, date_range):
     cur_threat_list = cur_dev_inst.threat_list
     
     desired_threat_list = []
+    desired_threat_list.append(device_name)
     for threat in cur_threat_list:
         date_str = threat['start']
         test_date = date(int(date_str[0:4]), int(date_str[5:7]), int(date_str[8:10]))
@@ -535,27 +526,95 @@ def month_report(client_id, year, month):
     last_day = monthrange(year, month)[1]
     client_threat_dict = {}
 
-    date_range = ['%i %02i %02i' % (year, month, first_day), '%i %02i %02i' % (year, month, last_day)]
-    print 'your range', date_range
+    date_range = ['%i %02i %02i' % (year, month, first_day), '%i %02i %02i' % (
+        year, 
+        month, 
+        last_day
+        )
+        ]
+    print '\n*****************8'
+    print 'Range:', date_range
     
-    for device in Client.inst_by_id[client_id].device_id_dict.keys():
-        device_name = device_id_name(device)[0]
-        dev_threat_list = scan_from_range(device, date_range)
-    ######### This is not the right place to handle the device name
+    for device_id in Client.inst_by_id[client_id].device_id_dict.keys():
+        device_name = device_id_name(device_id)[0]
+        dev_threat_list = scan_from_range(device_id, date_range)
         client_threat_dict[device_name] = dev_threat_list
+  
+    return client_threat_dict
 
-    print 'Threats for %s' % client_name
+def disp_client_threats(client_threat_dict, client_id):
+    """Take a client_threat_dict and display threat information
+    
+        Args:
+            client_threat_dict (dict) : Keys are device_names and values are threat_lists
+    """
+    client_name = client_id_name(client_id)[0]
+
+    print 'Threats for client %s' % client_name
     for device in client_threat_dict.keys():
-        print 'Device %s' % device
         disp_threats(client_threat_dict[device])
+
+def gen_month_report_doc(client, year, month):
+    """Write text file to to be used in .pdf production"""
+    client_threat_dict = month_report(client, year, month)
+    
+    client = client # client name text
+    
+    root = etree.Element('root')
+     
+    #root.append( etree.Element('client_name') )
+    tag_client_name = etree.SubElement(root, 'client_name')
+    
+        
+    for threat_list in client_threat_dict.values():
+        print 'device name', threat_list[0]
+        print 'number of threats', len(threat_list[1:])
+        if len(threat_list) > 1:
+            for threat in threat_list[1:]:
+                print 'threat name', threat['name']
+                for trace in threat['traces']:
+                    print 'trace', trace
+
+        tag_device_name = etree.SubElement(tag_client_name, 'device_name')
+        tag_device_name.text = threat_list[0]
+        
+        
+        if len(threat_list) == 1:
+            tag_threat = etree.SubElement(tag_device_name, 'threat')
+            tag_threat_name = etree.SubElement(tag_threat, 'threat_name')
+            tag_threat_name.text = 'No threats found'
+        
+        elif len(threat_list) > 1:
+            for threat in threat_list[1:]:
+
+                tag_threat = etree.SubElement(tag_device_name, 'threat')
+                tag_threat_name = etree.SubElement(tag_threat, 'threat_name')
+                tag_threat_name.text = threat['name']
+                
+                tag_threat_status = etree.SubElement(tag_threat, 'status')
+                tag_threat_status.text = threat['status']
+
+                tag_threat_date = etree.SubElement(tag_threat, 'date')
+                tag_threat_date.text = threat['start']
+                
+                for trace in threat['traces']:
+                    tag_threat_trace = etree.SubElement(tag_threat, 'trace')
+                    tag_threat_trace.text = trace
+                
+    # for testing
+    print (etree.tostring(root, pretty_print=True))
+    with open('./data/testXML.xml', 'w') as f:
+        f.write(etree.tostring(root))
+        f.close
 
 def main():
     print '\nGathering information and building data structures.\nThis will take a moment....'
     populate_database()
-    #narrow_threats = scan_from_range('united-002', ('2015 02 01', '2015 04 28'))
-    #print 'Threats on united-002'
-    #disp_threats(narrow_threats)
-    month_report('mosm', 2015, 05)
+    
+    gen_month_report_doc('mosm', 2015, 05)
+    
+    #client_threat_dict = month_report('mosm', 2015, 05)
+    #disp_client_threats(client_threat_dict, 'mosm')
     #query_user()
 #    dispClients()    
 #    raw_input('')
