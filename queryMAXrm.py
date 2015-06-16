@@ -558,13 +558,13 @@ def gen_month_report_doc(client, year, month):
     """Write text file to to be used in .pdf production"""
     client_threat_dict = month_report(client, year, month)
     
-    client = client # client name text
+    client_name = client # client name text
     
     root = etree.Element('root')
      
     #root.append( etree.Element('client_name') )
     tag_client_name = etree.SubElement(root, 'client_name')
-    
+    tag_client_name.text = client_name
         
     for threat_list in client_threat_dict.values():
         print 'device name', threat_list[0]
