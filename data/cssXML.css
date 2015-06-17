@@ -1,0 +1,33 @@
+root {
+    background-color: #ffffff;
+    width: 100%;
+}
+client_name {
+    display: block;
+    margin-bottom: 20pt;
+    margin-left: 5pt;
+}
+device_name {
+    display: block;
+    margin-bottom: 10pt;
+    margin-left: 15pt;
+}
+threat {
+    display: block;
+    color: #000000;
+    font-size: 12pt;
+    margin-left: 20pt;
+    margin-bottom: 10pt;
+}
+status, date {
+    color: #000000;
+    font-size: 12pt;
+    margin-left: 20pt;
+}
+trace {
+    display: block;
+    color: #808080;
+    margin-left: 20pt;
+}
+
+
