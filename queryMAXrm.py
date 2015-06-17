@@ -15,6 +15,7 @@ from bs4 import BeautifulSoup as bsoup
 from datetime import date
 from calendar import monthrange
 from lxml import etree
+import disp
 
 # Global variables
 api_key = '6p3t2wsX2nOyUwjNAN5JXLHJRGzT3SGN'
@@ -105,59 +106,6 @@ class Device():
         Client.inst_by_id[client_id].device_name_dict[name] = self
         Client.inst_by_id[client_id].device_id_dict[id] = self
     
-def dispClients():
-    """Iterate over Clients.inst_by_name and display client names and IDs"""
-    print '\n***Client Name: Client ID***\n'
-    for inst in Client.inst_by_name.values():
-        print inst.name, ':', inst.id
-
-def dispSites():
-    """Iterate over site_name_dict for each Client.inst_by_name.value and
-    display site names and IDs
-    """
-    
-    for inst in Client.inst_by_name.values():
-        print '\n***Client Name: Client ID***\n'
-        print inst.name, ':', inst.id
-        print '\n\t***Site Name: Site ID***\n'
-
-        for key in inst.site_name_dict.keys():
-            print '\t',key, ':', inst.site_name_dict[key]
-        
-def dispDevicesAll():
-    """Iterate over Devices.inst_by_name and display device names and IDs"""
-    print '\n***Device Name: Device ID***\n'
-    for inst in Device.inst_by_name.values():
-        print inst.name, ':', inst.id
-
-def disp_device_names():
-    """Display device names in three columns"""
-    client_dict = {}
-    #for inst in Device.inst_by_name.values():
-    #    name_list.append(inst.name)
-    
-    for client_inst in Client.inst_by_name.values():
-        client_name = client_inst.name
-        name_list = []
-        for device_name in client_inst.device_name_dict.keys():
-            name_list.append(device_name)
-        
-        client_dict[client_name] = name_list
-
-    for client_name in client_dict.keys():
-        name_rows = []
-        name_list = client_dict[client_name]
-        print '\n***%s %s devices***' % (client_name, len(name_list))
-
-        i = 0
-        while i < len(name_list):
-            name_rows.append(name_list[i:i+6])
-            i += 6  
-     
-        col_width = max(len(device_name) for row in name_rows for device_name in row) + 1 # padding
-        for row in name_rows:
-            print ''.join(word.ljust(col_width) for word in row)
-
 def disp_threats(threat_list):
     """Display the threat_dict data is a resonable way
     
@@ -501,15 +449,8 @@ def scan_from_range(device, date_range):
             
     return desired_threat_list
 
-def populate_database():
-    """Call the functions to generate instances and populate them with data"""
-    gen_client_info()
-    gen_site_info()
-    gen_device_info()
-    gen_scan_info_all()
-
 def query_user():
-    disp_device_names() 
+    disp.device_names() 
     
     target = raw_input('\n>').lower()
     if target == 'quit':
@@ -607,20 +548,26 @@ def gen_month_report_doc(client, year, month):
         f.write(etree.tostring(root))
         f.close
 
+def populate_database():
+    """Call the functions to generate instances and populate them with data"""
+    gen_client_info()
+    gen_site_info()
+    gen_device_info()
+    #gen_scan_info_all()
+
 def main():
     print '\nGathering information and building data structures.\nThis will take a moment....'
     populate_database()
     
-    gen_month_report_doc('mosm', 2015, 05)
+    #gen_month_report_doc('mosm', 2015, 05)
     
     #client_threat_dict = month_report('mosm', 2015, 05)
     #disp_client_threats(client_threat_dict, 'mosm')
     #query_user()
-#    dispClients()    
-#    raw_input('')
-#    dispSites()
-#    raw_input('')
-#    dispDevicesAll()
+    #disp.clients(Client)
+    #disp.sites(Client)
+    #disp.devices_all(Device)
+    disp.device_names(Client, Device)
 
 if __name__ == '__main__':
     main()
