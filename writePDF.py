@@ -1,24 +1,34 @@
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer 
-from reportlab.lib.styles import getSampleStyleSheet
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.rl_config import defaultPageSize
 from reportlab.lib.units import inch
 from lxml import etree, objectify
+
 # for tables
 from reportlab.lib import colors
 from reportlab.lib import pagesizes 
 from reportlab.platypus import Table, TableStyle
 
+# for paragraphy stypes
+from reportlab.lib.enums import TA_LEFT
+from reportlab.lib.colors import (
+    black,
+    purple,
+    white,
+    yellow
+    )
+
 land_letter = pagesizes.landscape(pagesizes.letter)
 
-p_height = defaultPageSize[1]
-p_width = defaultPageSize[0]
+p_width = land_letter[0]
+p_height = land_letter[1]
 
 styles = getSampleStyleSheet()
 
 title = 'Threat scan report'
-pageinfo = 'DO NOT WANT'
+page_footer = ''
 
-out_file = './firstOut.pdf'
+out_para_file = './paraOut.pdf'
 in_file = './data/testXML.xml'
 
 with open(in_file, 'r') as f:
@@ -36,82 +46,112 @@ def myFirstPage(canvas, doc):
 def myLaterPages(canvas, doc):
     canvas.saveState()
     canvas.setFont('Times-Roman', 9)
-    canvas.drawString(inch, 0.75 * inch, 'Page %d %s' % (doc.page, pageinfo))
+    canvas.drawString(inch, 0.3 * inch, 'Page %d %s' % (doc.page, page_footer))
     canvas.restoreState()
 
-def go_for_table():
-    doc = SimpleDocTemplate(out_file, pagesize=land_letter)
-    flowables_list = []
+def stylesheet():
+    styles = {
+        'default': ParagraphStyle(
+        'default',
+        fontName='Times-Roman',
+        fontSize=10,
+        leading=12,
+        leftIndent=0,
+        rightIndent=0,
+        firstLineIndent=0,
+        alignment=TA_LEFT,
+        spaceBefore=0,
+        spaceAfter=1,
+        bulletFontName='Times-Roman',
+        bulletFontSize=10,
+        bulletIndent=0,
+        textColor=black,
+        backColor=None,
+        wordWrap=None,
+        borderWidth=0,
+        borderPadding=0,
+        borderColor=None,
+        borderRadius=None,
+        allowWidows=1,
+        allowOrphans=0,
+        textTransform=None,  # 'uppercase' | 'lowercase' | None
+        endDots=None,         
+        splitLongWords=1
+        )
+    }
+
+    styles['device_name'] = ParagraphStyle(
+        'device_name',
+        parent=styles['default'],
+        leftIndent=10
+        )
+
+    styles['threat_name'] = ParagraphStyle(
+        'threat_name',
+        parent=styles['default'],
+        leftIndent=20
+        )
+
+    styles['status'] = ParagraphStyle(
+        'status',
+        parent=styles['default'],
+        leftIndent=20
+        )
+    styles['trace'] = ParagraphStyle(
+        'trace',
+        parent=styles['default'],
+        firstLineIndent=-10,
+        leftIndent=40
+        )
+
+    return styles
+
+def build_flowables(stylesheet, xml_object):
     
-    my_text = create_text_list(in_xml_object)
-    t = Table(my_text, 1.2 * inch, hAlign='LEFT', vAlign='TOP')
-    #t.setStyle(TableStyle([alignment='LEFT'
-    #    ]))
+    para_list = []
+    default_style = stylesheet['default']
+    device_name_style = stylesheet['device_name']
+    threat_name_style = stylesheet['threat_name']
+    status_style = stylesheet['status']
+    trace_style = stylesheet['trace']
 
-    flowables_list.append(t)
-
-    doc.build(flowables_list)
-
-def go_for_para():
-    raw_input('Warning: This is going to over-write the out_file')
-    doc = SimpleDocTemplate(out_file)
-    
-    story = [Spacer(1, 0.5 * inch)]
-    style = styles['Normal']
-    # Dumps everything into paragraphs
-    my_text = create_text(in_xml_object)
-    for row in my_text:
-        p = Paragraph(row, style)
-        story.append(p)
-
-    story.append(Spacer(1, 0.2 * inch))
-
-    doc.build(story, onFirstPage=myFirstPage, onLaterPages=myLaterPages)
-
-def create_text_list(xml_object):
-    text_list = []
     client_name = xml_object.client_name.text
-    text_list.append(['Client name:', client_name])
+    p = Paragraph('Client name: %s' % client_name, default_style)
+    para_list.append(p)
 
     for el in xml_object.client_name.iterchildren():
         device_name = el.text
         threat_name = el.threat.threat_name.text # 'No threat found' has no children
-        text_list.append(['Device name:', device_name])
-        text_list.append(['', 'Threat name:', threat_name])
-        if threat_name != 'No threats found':
+        
+        p = Paragraph('Device name: %s' % device_name, device_name_style)
+        para_list.append(p)
+        
+
+        if threat_name == 'No threats found':
+            p = Paragraph(threat_name, threat_name_style)
+            para_list.append(p)
+
+        else:    
+            p = Paragraph('Threat name: %s' % threat_name, threat_name_style)
+            para_list.append(p)
             status = el.threat.status.text
             date = el.threat.date.text
-            text_list.append(['', 'Status:',  status, 'on', date])
+
+            p = Paragraph('Status: %s on %s' % (status, date), status_style)
+            para_list.append(p) 
             
+
             for i in el.threat.trace[0:]:
-                text_list.append(['', i.text])
-    
-    return text_list 
+                p = Paragraph(i.text, trace_style)
+                para_list.append(p)
 
-def create_text(xml_object):
-    text_list = []
-    client_name = xml_object.client_name.text
-    text_list.append('Client name: %s' % client_name)
+    return para_list 
 
-    for el in xml_object.client_name.iterchildren():
-        device_name = el.text
-        threat_name = el.threat.threat_name.text # 'No threat found' has no children
-        text_list.append('Device name: %s' % device_name)
-        text_list.append('Threat name: %s' % threat_name)
-        if threat_name != 'No threats found':
-            status = el.threat.status.text
-            date = el.threat.date.text
-            text_list.append('Status: %s on %s' % (status, date))
-            
-            for i in el.threat.trace[0:]:
-                text_list.append(i.text)
-    
-    my_string = '\n'.join(text_list)
-    for row in text_list:
-        print type(row), row
-
-    return text_list 
+def build_pdf(filename, flowables):
+    doc = SimpleDocTemplate(filename, leftMargin=35, rightMargin=35, topMargin=50, bottomMargin=50, pagesize=land_letter)
+    doc.build(flowables, onFirstPage=myFirstPage, onLaterPages=myLaterPages)
 
 if __name__ == '__main__':
-    go_for_table()
-
+    #go_for_table()
+    #go_for_para()
+    build_pdf(out_para_file, build_flowables(stylesheet(), in_xml_object))
