@@ -1,15 +1,9 @@
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer 
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-from reportlab.rl_config import defaultPageSize
 from reportlab.lib.units import inch
 from lxml import etree, objectify
-
-# for tables
-from reportlab.lib import colors
 from reportlab.lib import pagesizes 
 from reportlab.platypus import Table, TableStyle
-
-# for paragraphy stypes
 from reportlab.lib.enums import TA_LEFT
 from reportlab.lib.colors import (
     black,
@@ -23,19 +17,20 @@ land_letter = pagesizes.landscape(pagesizes.letter)
 p_width = land_letter[0]
 p_height = land_letter[1]
 
-styles = getSampleStyleSheet()
-
 title = 'Threat scan report'
 page_footer = ''
 
-out_para_file = './paraOut.pdf'
-in_file = './data/testXML.xml'
+out_file = './output.pdf'
+#in_file = './data/testXML.xml'
 
-with open(in_file, 'r') as f:
-    in_data = f.read()
-    f.close()
+def create_xml_obj(input):
+    with open(input, 'r') as f:
+        in_data = f.read()
+        f.close()
 
-in_xml_object = objectify.fromstring(in_data)
+    xml_object = objectify.fromstring(in_data)
+    
+    return xml_object
 
 def myFirstPage(canvas, doc):
     canvas.saveState()
@@ -147,11 +142,13 @@ def build_flowables(stylesheet, xml_object):
 
     return para_list 
 
-def build_pdf(filename, flowables):
+def build_pdf(filename, xml_string):
+    style_sheet = stylesheet()
+    xml_object = create_xml_obj(xml_string)
+    flowables = build_flowables(style_sheet, xml_object)
     doc = SimpleDocTemplate(filename, leftMargin=35, rightMargin=35, topMargin=50, bottomMargin=50, pagesize=land_letter)
     doc.build(flowables, onFirstPage=myFirstPage, onLaterPages=myLaterPages)
 
+
 if __name__ == '__main__':
-    #go_for_table()
-    #go_for_para()
-    build_pdf(out_para_file, build_flowables(stylesheet(), in_xml_object))
+    build_pdf(out_file, in_file)
