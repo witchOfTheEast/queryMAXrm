@@ -24,11 +24,11 @@ out_file = './output.pdf'
 #in_file = './data/testXML.xml'
 
 def create_xml_obj(input):
-    with open(input, 'r') as f:
-        in_data = f.read()
-        f.close()
+    #with open(input, 'r') as f:
+    #    in_data = f.read()
+    #    f.close()
 
-    xml_object = objectify.fromstring(in_data)
+    xml_object = objectify.fromstring(input)
     
     return xml_object
 
