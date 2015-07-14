@@ -19,33 +19,33 @@ api_key = '6p3t2wsX2nOyUwjNAN5JXLHJRGzT3SGN'
 query_server = 'www.systemmonitor.us'
     
 def client_id_name(client):
-    """Returna  tuple of ('client_name', client_id)"""
+    """Returna  tuple of ('client_name', client_id)""" # TODO This code is still broken
     try:
         client_id = Client.inst_by_name[client].id
         client_name = client
     except KeyError:
-        pass # fallback to 'client' parameter is id
-    try:
-        client_name = Client.inst_by_id[client].name
-        client_id = client
-    except KeyError:
-        pass
-    
+        # fallback to 'client' parameter is id
+        try:
+            client_name = Client.inst_by_id[int(client)].name
+            client_id = client
+        except KeyError:
+            pass
+        
     return (client_name, client_id)
 
 def device_id_name(device):
-    """Return a tuple of ('device name', device_id)"""
+    """Return a tuple of ('device name', device_id)""" # TODO This code is still broken
     try:
         device_id = Device.inst_by_name[device].id
         device_name = device
     except KeyError:
-        pass # fallback to 'device' parameter is id
-    try:
-        device_name = Device.inst_by_id[device].name
-        device_id = device
-    except KeyError:
-        pass
-    
+        # fallback to 'device' parameter is id
+        try:
+            device_name = Device.inst_by_id[int(device)].name
+            device_id = device
+        except KeyError:
+            pass
+        
     return (device_name, device_id)
 
 def create_dev_inst(data, client_id):
@@ -210,20 +210,19 @@ def scan_from_range(device, date_range):
     return desired_threat_list
 
 def query_user():
-    disp.device_names() 
+    disp.device_names(Client.inst_by_name) 
     
     target = raw_input('\n>').lower()
     if target == 'quit':
         exit()
     else:
-        disp_device_scan(target)
+        print device_id_name(target)
     query_user()
 
 def month_report(client_id, year, month):
     """Return a threat report for the provided client and the desired month"""
     client_id = client_id_name(client_id)[1]
     client_name = client_id_name(client_id)[0]
-    print 'month report on client %s' % client_name
     first_day = 01
     last_day = monthrange(year, month)[1]
     client_threat_dict = {}
@@ -249,7 +248,6 @@ def gen_month_report_doc(client, year, month):
     client_threat_dict = month_report(client, year, month)
     client_name = client # client name text
     
-    print 'gen_report on client %s' % client_name
     root = etree.Element('root')
      
     #root.append( etree.Element('client_name') )
@@ -310,20 +308,20 @@ def populate_database():
     gen_client_info()
     gen_site_info()
     gen_device_info()
-    gen_scan_info_all()
+    #gen_scan_info_all()
 
 def main():
     print '\nGathering information and building data structures.\nThis will take a moment....'
     populate_database()
     
-    all_clients_month_report(2015, 5)
+    #all_clients_month_report(2015, 6)
 
     #gen_month_report_doc('mosm', 2015, 05)
     
     #client_threat_dict = month_report('mosm', 2015, 05)
     
     #disp.client_threats(client_threat_dict, 'mosm')
-    #query_user()
+    query_user()
     #disp.clients(Client.inst_by_name)
     #disp.sites(Client.inst_by_id)
     #disp.devices_all(Device.inst_by_name)

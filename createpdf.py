@@ -132,7 +132,7 @@ def build_flowables(stylesheet, xml_object):
             status = el.threat.status.text
             date = el.threat.date.text
 
-            p = Paragraph('Status: %s on %s' % (status, date), status_style)
+            p = Paragraph('Status: %s on %s (UTC)' % (status, date), status_style)
             para_list.append(p) 
             
 
