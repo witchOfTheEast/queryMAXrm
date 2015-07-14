@@ -2,50 +2,78 @@
 
 # Python 2.7 script
 from bs4 import BeautifulSoup as bsoup
-import requests
+import requests, os, ConfigParser
 from datetime import date
 from calendar import monthrange
 from lxml import etree
-import disp
+
 from classes import Client, Device
 import response
 import createpdf
+import disp
 
-# NOTE: If API key is regenerated in MAXrm it *must* be updated here
 # NOTE: BeautifulSoup deals in unicode, python str may need .encode('utf-8')
 # appended, esp. when piping or writing out to file
 
-api_key = '6p3t2wsX2nOyUwjNAN5JXLHJRGzT3SGN'
-query_server = 'www.systemmonitor.us'
-    
+def getConf():
+    cwd = os.path.dirname(os.path.abspath(__file__))
+    conf_file = os.path.join(cwd, 'config.ini')
+
+    if not os.path.isfile(conf_file):
+        print 'Cannot locate %s' % conf_file
+
+    opt_dict = {}
+
+    config = ConfigParser.SafeConfigParser()
+
+    config.read(conf_file)
+
+    sections = config.sections()
+
+    for section in sections:
+        options  = config.options(section)
+        
+        for option in options:
+            opt_dict[option] = config.get(section, option)
+        
+    return opt_dict   
+
 def client_id_name(client):
     """Returna  tuple of ('client_name', client_id)""" # TODO This code is still broken
-    try:
-        client_id = Client.inst_by_name[client].id
-        client_name = client
-    except KeyError:
-        # fallback to 'client' parameter is id
-        try:
-            client_name = Client.inst_by_id[int(client)].name
+    try: 
+        client_id = int(client)
+    except ValueError:
+        print 'int() failed'
+        if client in Client.inst_by_name:
+            client_name = client
+            client_id = Client.inst_by_name[client].id
+        else:
+            client_name, client_id = 'Not', 'found'
+    else:
+        if client in Client.inst_by_id:
+            client_name = Client.inst_by_id[client].name
             client_id = client
-        except KeyError:
-            pass
-        
+        else:
+            client_name, client_id = 'Not', 'found'
+    
     return (client_name, client_id)
 
 def device_id_name(device):
     """Return a tuple of ('device name', device_id)""" # TODO This code is still broken
-    try:
-        device_id = Device.inst_by_name[device].id
-        device_name = device
-    except KeyError:
-        # fallback to 'device' parameter is id
-        try:
+    try: 
+        device_id = int(device)
+    except ValueError:
+        if device in Device.inst_by_name:
+            device_name = device
+            device_id = Device.inst_by_name[device].id
+        else:
+            device_name, device_id = 'Not', 'found'
+    else:
+        if device in Device.inst_by_id:
             device_name = Device.inst_by_id[int(device)].name
-            device_id = device
-        except KeyError:
-            pass
-        
+        else:
+            device_name, device_id = 'Not', 'found'
+    
     return (device_name, device_id)
 
 def create_dev_inst(data, client_id):
@@ -310,10 +338,53 @@ def populate_database():
     gen_device_info()
     #gen_scan_info_all()
 
+def test_client():
+    names = []
+    ids = []
+    for item in Client.inst_by_name.keys():
+        names.append(item)
+    names.append('fake')
+
+    #for item in Client.inst_by_name.values():
+    #    ids.append(item.id)
+    ids.append(123214)
+
+    #for item in names:
+    #    print client_id_name(item)
+
+    for item in ids:
+        print client_id_name(item)
+
+def test_device():
+    names = []
+    ids = []
+    for item in Device.inst_by_name.keys():
+        names.append(item)
+    names.append('fake')
+
+    for item in Device.inst_by_name.values():
+        ids.append(item.id)
+    ids.append('123214')
+
+#    for item in names:
+#        print device_id_name(item)
+
+    for item in ids:
+        print device_id_name(item)
+
 def main():
+    opts = getConf()
+    
+    global query_server
+    global api_key
+    api_key = opts['api_key']
+    query_server = opts['query_server']
+
     print '\nGathering information and building data structures.\nThis will take a moment....'
     populate_database()
-    
+    #query_user()
+    test_client()
+    #test_device()
     #all_clients_month_report(2015, 6)
 
     #gen_month_report_doc('mosm', 2015, 05)
@@ -321,7 +392,6 @@ def main():
     #client_threat_dict = month_report('mosm', 2015, 05)
     
     #disp.client_threats(client_threat_dict, 'mosm')
-    query_user()
     #disp.clients(Client.inst_by_name)
     #disp.sites(Client.inst_by_id)
     #disp.devices_all(Device.inst_by_name)
