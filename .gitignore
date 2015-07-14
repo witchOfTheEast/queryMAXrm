@@ -1,6 +1,10 @@
 # Data
 data/
 threat_reports/
+
+# Vim temp files
+*.swp
+*.swo
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
