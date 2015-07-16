@@ -1,3 +1,12 @@
+#Python 2.7
+"""Create threat_report .pdf files for client with supplied threat data.
+
+Unfortunately, this code was collected and modified from a variety of tutorials, all of which were not documents. Many apologies.
+
+If you own the code/tutorials please contact and due credit will happily be added.
+
+This is the place to customize the look of the .pdfs."""
+
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer 
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.units import inch

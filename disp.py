@@ -1,5 +1,3 @@
-#! /usr/bin/python2
-
 # Python 2.7
 """Display information gathered by queryMAXrm.py to the console in a resonable manner.""" 
 
@@ -12,7 +10,6 @@ def clients(inst_dict):
     print '\n***Name : ID***'
     for inst in inst_dict.values():
         print '\n%s : %s' %(inst.name, inst.id)
-
 
 def sites(inst_dict):
     """Iterate over dict of Client instances.site_name_dict and

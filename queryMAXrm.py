@@ -1,21 +1,25 @@
-#! /usr/bin/python2
-
 # Python 2.7 script
+# Created by: Randall Dunn
+# Email: justThisGuyRandall@gmail.com
+# 2015/07/16
+
+# customize the look of the .pdfs in createpdf.py
+
 from bs4 import BeautifulSoup as bsoup
-import requests, os, ConfigParser
 from datetime import date
 from calendar import monthrange
 from lxml import etree
+import requests, os, ConfigParser, getopt, sys
 
+# Custom modules
 from classes import Client, Device
 import response
 import createpdf
 import disp
 
-# NOTE: BeautifulSoup deals in unicode, python str may need .encode('utf-8')
-# appended, esp. when piping or writing out to file
-
 def getConf():
+    """Extract API key and server address from config.ini and return
+    them in a dict {'api_key': KEY, 'query_server': SERVER}"""
     cwd = os.path.dirname(os.path.abspath(__file__))
     conf_file = os.path.join(cwd, 'config.ini')
 
@@ -39,11 +43,14 @@ def getConf():
     return opt_dict   
 
 def client_id_name(client):
-    """Returna  tuple of ('client_name', client_id)""" # TODO This code is still broken
+    """Return a  tuple of ('client_name', client_id)
+    
+        Args:
+            client: Either client name (str) or client id (int)
+    """ 
     try: 
         client_id = int(client)
     except ValueError:
-        print 'int() failed'
         if client in Client.inst_by_name:
             client_name = client
             client_id = Client.inst_by_name[client].id
@@ -59,7 +66,11 @@ def client_id_name(client):
     return (client_name, client_id)
 
 def device_id_name(device):
-    """Return a tuple of ('device name', device_id)""" # TODO This code is still broken
+    """Return a tuple of ('device name', device_id)
+        
+        Args:
+            device: Either device name (str) or device id (int)
+    """ 
     try: 
         device_id = int(device)
     except ValueError:
@@ -77,7 +88,13 @@ def device_id_name(device):
     return (device_name, device_id)
 
 def create_dev_inst(data, client_id):
-    """Create Device instance from response data"""
+    """Create Device instance from response data
+        
+        Args:
+            data (tuple): Parsed response data
+                (result_1, result_2, data_type)
+            client_id (int): Active client ID number
+    """
     result_1 = data[0]
     result_2 = data[1]
     data_type = data[2]
@@ -90,7 +107,11 @@ def create_dev_inst(data, client_id):
         Device(dev_name, dev_id, client_id)        
 
 def create_client_inst(data):
-    """Create Client instance from response data"""
+    """Create Client instance from response data
+        Args:
+            data (tuple): Parsed response data
+                (result_1, result_2, data_type)
+    """
     result_1 = data[0]
     result_2 = data[1]
     data_type = data[2]
@@ -104,11 +125,15 @@ def create_client_inst(data):
             name = value_1
             id = value_2
             Client(name, id)
-            #Client.inst_by_name[name] = inst
-            #Client.inst_by_id[id] = inst 
 
 def append_site_info(data, client_id):
-    """Append site info from response data to client and device instances passed as parameters"""
+    """Set site related attributes to Client and Device instances
+
+        Args:
+            data (tuple): Parsed response data
+                (result_1, result_2, data_type)
+            client_id (int): Active client ID number
+    """
     result_1 = data[0]
     result_2 = data[1]
     data_type = data[2]
@@ -126,49 +151,50 @@ def append_site_info(data, client_id):
             inst.site_id_dict[id] = name 
 
 def get_response(data_type, client_id=None, device_id=None):
-    """Request GET from API server based on desired type, return raw response data"""
+    """Request GET from API server based on desired type, return
+raw response data
+
+        Args:
+            data_type (str): Type of request, 'client', 'site',
+                'device', 'scan'
+            client_id (int): Active client ID number
+            device_id (int): Active device ID number
+    """
     if data_type == 'client':
         payload = {'service': 'list_clients'}
         
-        #Uncomment and test https GET for deploy
         temp_resp = requests.get('https://%s/api/?apikey=%s&' % (query_server, api_key), params=payload)
         resp = temp_resp.text
-        #resp = None
     
     if data_type == 'site':
         payload = {'service': 'list_sites', 'clientid': client_id}
-        #Uncomment and test https GET for deploy
         temp_resp = requests.get('https://%s/api/?apikey=%s&' % (query_server, api_key), params=payload)
         resp = temp_resp.text
-        #resp = None
 
     if data_type == 'device':
         device_type = ('workstation', 'server')
         resp = ''
         for dev_type in device_type:
             payload = {'service': 'list_devices_at_client', 'clientid': client_id, 'devicetype': dev_type}
-            #Uncomment and test https GET for deploy
             temp_resp = requests.get('https://%s/api/?apikey=%s&' % (query_server, api_key), params=payload)
             resp += temp_resp.text
-            #resp = None
 
     if data_type == 'scan':
         payload = {'service': 'list_mav_scans', 'deviceid': device_id, 'details': 'YES'}
         temp_resp = requests.get('https://%s/api/?apikey=%s&' % (query_server, api_key), params=payload)
         resp = temp_resp.text
-        #resp = None
         
     return resp
 
 def gen_client_info():
-    """Generate Client instances with info"""
+    """Generate Client instances with attribute data"""
     data_type = 'client'
     raw_response = get_response(data_type)
     parsed_data = response.parse(raw_response, data_type)
     create_client_inst(parsed_data)
 
 def gen_site_info():
-    """Generate Site info and put into Client instances"""
+    """Generate Site data and set attributes in Client instances"""
     data_type = 'site'
     for client_id in Client.inst_by_id.keys(): 
         raw_response = get_response(data_type, client_id)
@@ -176,7 +202,7 @@ def gen_site_info():
         append_site_info(parsed_data, client_id)
 
 def gen_device_info():
-    """Generate Device info and put into Device instances"""
+    """Generate Device data and set attributes in Device instances"""
     data_type = 'device'
     for client_id in Client.inst_by_id.keys():
         raw_response = get_response(data_type, client_id)
@@ -184,12 +210,16 @@ def gen_device_info():
         create_dev_inst(parsed_data, client_id)
 
 def gen_scan_info_all():
-    """Generate scan info for each device in Device.inst"""
+    """Generate scan data for each device in Device.inst"""
     for device_id in Device.inst_by_id.keys():
         gen_device_scan_info(device_id)
 
 def gen_device_scan_info(device):
-    """Take either device name or id, get the threat_dict and append it to the Device instance"""
+    """Get the threat_dict and append it to the Device instance
+        
+        Args:
+            device : Either device name (str) or device id (int)
+    """
     data_type = 'scan'
    
     device_name, device_id = device_id_name(device)
@@ -203,13 +233,9 @@ def scan_from_range(device, date_range):
   
         Args:
             device : Either device name (str) or device id (int)
-            date_range (list) : start date end date ['YYYY MM DD', 'YYYY MM DD']
+            date_range (list) : start date end date 
+                ['YYYY MM DD', 'YYYY MM DD']
     """
-    
-    # for testing
-    #device = 'united-002'
-    #date_range = ['2015 01 15', '2015 03 23']
-    
     device_name = device_id_name(device)[0]
     device_id = device_id_name(device)[1]
 
@@ -238,6 +264,9 @@ def scan_from_range(device, date_range):
     return desired_threat_list
 
 def query_user():
+    """Provide unknown names or ids for devices. 
+    Query user input for either device name or device id, 
+    call device_id_name, and then repeat until >quit"""
     disp.device_names(Client.inst_by_name) 
     
     target = raw_input('\n>').lower()
@@ -248,7 +277,13 @@ def query_user():
     query_user()
 
 def month_report(client_id, year, month):
-    """Return a threat report for the provided client and the desired month"""
+    """Return a threat report for the specified client / month
+    
+        Args:
+           client_id (int) = Active clinet ID number
+           year (int) = Four digit year
+           month (int) = One or two digit month
+    """
     client_id = client_id_name(client_id)[1]
     client_name = client_id_name(client_id)[0]
     first_day = 01
@@ -261,8 +296,6 @@ def month_report(client_id, year, month):
         last_day
         )
         ]
-    #print '\n*****************'
-    #print 'Range:', date_range
     
     for device_id in Client.inst_by_id[client_id].device_id_dict.keys():
         device_name = device_id_name(device_id)[0]
@@ -272,7 +305,13 @@ def month_report(client_id, year, month):
     return client_threat_dict
 
 def gen_month_report_doc(client, year, month):
-    """Write text file to to be used in .pdf production"""
+    """Collate and format threat data, call createpdf.build_pdf.
+
+        Args:
+            client (str): Active client
+            year (int): Four digit year
+            month (int): One or two digit month
+    """
     client_threat_dict = month_report(client, year, month)
     client_name = client # client name text
     
@@ -283,14 +322,6 @@ def gen_month_report_doc(client, year, month):
     tag_client_name.text = client_name
         
     for threat_list in client_threat_dict.values():
-        #print 'device name', threat_list[0]
-        #print 'number of threats', len(threat_list[1:])
-        if len(threat_list) > 1:
-            for threat in threat_list[1:]:
-                #print 'threat name', threat['name']
-                for trace in threat['traces']:
-                    #print 'trace', trace
-                    pass
 
         tag_device_name = etree.SubElement(tag_client_name, 'device_name')
         tag_device_name.text = threat_list[0]
@@ -328,6 +359,13 @@ def gen_month_report_doc(client, year, month):
     createpdf.build_pdf(out_file, xml_string) 
     
 def all_clients_month_report(year, month):
+    """Iterate through all clients and call function to generate 
+    report documents
+    
+        Args:
+            year (int): Four digit year
+            month (int): One or two digit month
+    """
     for client_name in Client.inst_by_name.keys():
        gen_month_report_doc(client_name, year, month)
 
@@ -336,66 +374,84 @@ def populate_database():
     gen_client_info()
     gen_site_info()
     gen_device_info()
-    #gen_scan_info_all()
+    gen_scan_info_all()
 
-def test_client():
-    names = []
-    ids = []
-    for item in Client.inst_by_name.keys():
-        names.append(item)
-    names.append('fake')
+def usage():
+    """Print basic usage help"""
+    print """
+Usage: queryMAXrm.py -m MM -y YYYY
 
-    #for item in Client.inst_by_name.values():
-    #    ids.append(item.id)
-    ids.append(123214)
+Produces .pdf reports for all clients of all threats found during the 
+month specified.
 
-    #for item in names:
-    #    print client_id_name(item)
+Mandatory arguments to long options are mandatory to short form as well.
 
-    for item in ids:
-        print client_id_name(item)
+    -m, --month=MM    Desired month in two digit format, i.e. 07 as July
+    -y, --year=YYYY   Desired year in four digit format, i.e. 2015
 
-def test_device():
-    names = []
-    ids = []
-    for item in Device.inst_by_name.keys():
-        names.append(item)
-    names.append('fake')
+This module requires a config.ini in the same base folder. The API key 
+generated from the dashboard and must be updated if the key is 
+regenerated. The server address is found in the Help under 
+Integration > Data Extract API. 
 
-    for item in Device.inst_by_name.values():
-        ids.append(item.id)
-    ids.append('123214')
+The config.ini format is
+>>>
+    api_key = 32CHARACTERAPIKEYFROMMAXRMDDASHBOARD
+    query_server = www.systemmonitor.us
+<<<
 
-#    for item in names:
-#        print device_id_name(item)
+At present, this module retrieves the client, site, device and MAV scan 
+data and produces .pdfs. It can be readily extended to provide 
+additional functionality to meet a variety of needs. However, that will 
+be up to the end user.
 
-    for item in ids:
-        print device_id_name(item)
+That is to say, this module is provided strictly as-is, has very 
+limited error checking and there is no guarantee of support.
+    """
 
-def main():
+def main(argv):
     opts = getConf()
     
     global query_server
     global api_key
     api_key = opts['api_key']
     query_server = opts['query_server']
+   
+    try:
+        options, args = getopt.getopt(argv,'hm:y:',['month=','year='])
+    except getopt.GetoptError:
+        usage()
+        sys.exit(2)
 
+    for option, arg in options:
+        if option == '-h':
+            usage()
+            sys.exit()
+        
+        elif option in ('-m', '--month'):
+            month = int(arg)
+        
+        elif option in ('-y', '-year'):
+            year = int(arg)
+
+    
     print '\nGathering information and building data structures.\nThis will take a moment....'
+    
     populate_database()
-    #query_user()
-    test_client()
-    #test_device()
-    #all_clients_month_report(2015, 6)
+    
+    print '\nCreating threat reports for %s/%s.\nPlease be patient....' % (month, year)
+    
+    all_clients_month_report(year, month)
+   
+    print '\nReports completed. Please check the threat_reports destination folder.\n'
 
-    #gen_month_report_doc('mosm', 2015, 05)
-    
-    #client_threat_dict = month_report('mosm', 2015, 05)
-    
-    #disp.client_threats(client_threat_dict, 'mosm')
+    #query_user()
+
+    #disp.client_threats(client_threat_dict, <CLIENTNAME>)
     #disp.clients(Client.inst_by_name)
     #disp.sites(Client.inst_by_id)
     #disp.devices_all(Device.inst_by_name)
     #disp.device_names(Client.inst_by_name)
 
 if __name__ == '__main__':
-    main()
+    main(sys.argv[1:])

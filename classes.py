@@ -1,3 +1,5 @@
+#Python 2.7
+"""Provide Client and Device classes for queryMAXrm.py"""
 class Client:
     """Client object to hold data.
 

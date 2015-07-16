@@ -1,37 +1,31 @@
+# Python 2.7
 from bs4 import BeautifulSoup as bsoup
+"""Provide parsing for various types of http response data"""
 def parse(data, data_type, client_id=None):
-    """Accept raw response, pull out desired data and return parsed response data"""
-    # 'filename' can be used to skip GETs to server for faster testing
+    """Extract data from raw response and return parsed dicts in
+    a tuple
+        Args:
+            data: GET response data
+            data_type (str): 'client', 'site', device', but not 'scan'
+            client_id (int): Active client ID number
+    """
     if data_type == 'client':
-        filename = './data/tempFile'
         search_1 = 'name'
         search_2 = 'clientid'
 
     elif data_type == 'site':
-        filename = './data/%s_siteData' % client_id 
         search_1 = 'name'
         search_2 = 'siteid'
 
     elif data_type == 'device':
-        filename = './data/devices/%s_devicedata' % client_id
         search_1 = ['workstation', 'server'] 
         search_2 = 'id'
     
     elif data_type == 'mavscan':
         pass 
     
-    # This block makes use of 'filename' for faster testing
-    if data == None:
-         with open(filename, 'r') as f:
-            data = f.read() 
-            f.close()
-         soup = bsoup(data, 'html5lib')
-         
-    else: 
-        soup = bsoup(data, 'html5lib')
-    # If the above block opening 'filename' is removed, this following line
-    # must be uncommented and functionality tested
-    #soup = bsoup(data.text, 'html5lib')
+    soup = bsoup(data, 'html5lib')
+    
     result_1 = soup.find_all(search_1)
     result_2 = soup.find_all(search_2)
     
@@ -40,22 +34,16 @@ def parse(data, data_type, client_id=None):
     
     return (result_1, result_2, data_type)
 
-
 def parse_scan(data, device_id, device_name):
-    """Accept raw response, pull out desired threat data and return parsed response data"""
-
-    #This block is only for testing. 
-    # Remove and confirm correct function of https GET before deploy
-    if data == None:
-        filename = './data/scans/%s_scandata' % (device_id)
-        with open(filename, 'r') as f:
-            response_data = f.read()
-            f.close()
-
-        soup = bsoup(response_data, 'html5lib')
+    """Extract data from raw response and return parsed dicts in
+    a tuple
+        Args:
+            data: GET response data
+            device_id (int): Active device ID number
+            device_name (str): Active device name
+    """
     
-    else:
-        soup = bsoup(data, 'html5lib')
+    soup = bsoup(data, 'html5lib')
 
     search_1 = 'threat'
     search_2 = 'trace'
@@ -98,19 +86,7 @@ def parse_scan(data, device_id, device_name):
             
             if sib.name == 'type':
                 threat_dict['type'] = sib.string 
-        '''        
-        print ''
-        print 'name', threat_dict['name']
-        print 'type', threat_dict['type']
-        print 'status', threat_dict['status'] 
-        print 'start', threat_dict['start']
-        print 'Number of traces', threat_dict['count'] 
-        print '\ntraces found'
-        for i in range(len(trace_list)):
-            count = i + 1
-            print 'trace', count, trace_list[i]
-        print ''
-        '''
+        
         threat_dict['traces'] = trace_list
 
         threat_list.append(threat_dict)
