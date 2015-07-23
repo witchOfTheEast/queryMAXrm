@@ -355,8 +355,8 @@ def gen_month_report_doc(client, year, month):
 
     filename = '_'.join([client_name, str(year), month_str, 'threat_report'])
     # TODO Make this not be hardcoded 
-    top_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..')
-    report_dir = os.path.join(top_dir, 'threat_reports')
+    
+    report_dir = os.path.join(cwd, 'threat_reports')
 
     if not os.path.exists(report_dir):
         os.makedirs(report_dir)
@@ -417,9 +417,9 @@ limited error checking and there is no guarantee of support.
 
 def main(argv):
     args = argv[1:]
-    
+    global cwd 
     cwd = os.path.dirname(os.path.abspath(argv[0]))
-    print os.path.basename(argv[0])
+    
     if os.path.basename(argv[0]) == 'app.py':
         conf_file = os.path.join(cwd, '..', 'config.ini')
     else:
@@ -457,7 +457,7 @@ def main(argv):
     all_clients_month_report(year, month)
    
     print '\nReports completed. Please check the threat_reports destination folder.\n'
-
+    print os.path.join(cwd, 'threat_reports')
     #query_user()
 
     #disp.client_threats(client_threat_dict, <CLIENTNAME>)

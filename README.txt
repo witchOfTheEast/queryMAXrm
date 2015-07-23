@@ -7,14 +7,14 @@ Installation
     
 4.) Extract queryMAXrm-0.1.zip to destination directory
 5.) From command line, nagivate to destination directory and run:
-    python queryMAXrm\app.py -m MM -y YYYY
+    python runme.py -m MM -y YYYY
 6.) Look for report .pdfs in the destination\threat_reports folder
 
 Ex: 
 -extracted to C:\Users\temp\scripts\
 -created C:\Users\temp\scripts\queryMAXrm-0.1
 -nagivate the command line to C:\Users\temp\scripts\queryMAXrm-0.1
--run: python queryMAXrm\runme.py -m 05 -y 2015
+-run: python runme.py -m 05 -y 2015
 -reports created in C:\Users\temp\scripts\queryMAXrm-0.1\threat_reports
 
 
