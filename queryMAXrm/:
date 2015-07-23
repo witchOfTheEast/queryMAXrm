@@ -1,0 +1,10 @@
+import os
+
+cwd = os.path.abspath(__file__)
+conf_file = os.path.join(cwd, '/../config.ini')
+
+if os.path.isfile(conf_file):
+    print 'that\'s a file'
+
+print cwd
+print conf_file
