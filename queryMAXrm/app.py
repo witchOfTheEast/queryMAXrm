@@ -17,14 +17,13 @@ import response
 import createpdf
 import disp
 
-def getConf():
+def getConf(conf_file):
     """Extract API key and server address from config.ini and return
     them in a dict {'api_key': KEY, 'query_server': SERVER}"""
-    cwd = os.path.dirname(os.path.abspath(__file__))
-    conf_file = os.path.join(cwd, '..', 'config.ini')
 
     if not os.path.isfile(conf_file):
         print 'Cannot locate %s' % conf_file
+        sys.exit(2)
 
     opt_dict = {}
 
@@ -383,10 +382,10 @@ def populate_database():
     gen_device_info()
     gen_scan_info_all()
 
-def usage():
+def usage(script_name):
     """Print basic usage help"""
     print """
-Usage: app.py -m MM -y YYYY
+Usage: %s -m MM -y YYYY
 
 Produces .pdf reports for all clients of all threats found during the 
 month specified.
@@ -403,7 +402,7 @@ Integration > Data Extract API.
 
 The config.ini format is
 >>>
-    api_key = 32CHARACTERAPIKEYFROMMAXRMDDASHBOARD
+    api_key = 32CHARACTERAPIKEYFROMMAXRMDASHBOARD
     query_server = www.systemmonitor.us
 <<<
 
@@ -414,25 +413,33 @@ be up to the end user.
 
 That is to say, this module is provided strictly as-is, has very 
 limited error checking and there is no guarantee of support.
-    """
+    """ % script_name
 
 def main(argv):
-    opts = getConf()
+    args = argv[1:]
+    
+    cwd = os.path.dirname(os.path.abspath(argv[0]))
+    print os.path.basename(argv[0])
+    if os.path.basename(argv[0]) == 'app.py':
+        conf_file = os.path.join(cwd, '..', 'config.ini')
+    else:
+        conf_file = os.path.join(cwd, 'config.ini')
+        
+    opts = getConf(conf_file)
     
     global query_server
     global api_key
     api_key = opts['api_key']
     query_server = opts['query_server']
-   
     try:
-        options, args = getopt.getopt(argv,'hm:y:',['month=','year='])
+        options, args = getopt.getopt(args,'hm:y:',['month=','year='])
     except getopt.GetoptError:
-        usage()
+        usage(argv[0])
         sys.exit(2)
 
     for option, arg in options:
         if option == '-h':
-            usage()
+            usage(argv[0])
             sys.exit()
         
         elif option in ('-m', '--month'):
@@ -460,4 +467,5 @@ def main(argv):
     #disp.device_names(Client.inst_by_name)
 
 if __name__ == '__main__':
-    main(sys.argv[1:])
+    main(sys.argv)
+

@@ -14,11 +14,11 @@ Ex:
 -extracted to C:\Users\temp\scripts\
 -created C:\Users\temp\scripts\queryMAXrm-0.1
 -nagivate the command line to C:\Users\temp\scripts\queryMAXrm-0.1
--run: python queryMAXrm\app.py -m 05 -y 2015
+-run: python queryMAXrm\runme.py -m 05 -y 2015
 -reports created in C:\Users\temp\scripts\queryMAXrm-0.1\threat_reports
 
 
-Usage: app.py -m MM -y YYYY
+Usage: <SCRIPT> -m MM -y YYYY
 
 Produces .pdf reports for all clients of all threats found during the 
 month specified.
@@ -35,7 +35,7 @@ Integration > Data Extract API.
 
 The config.ini format is
 >>>
-    api_key = 32CHARACTERAPIKEYFROMMAXRMDDASHBOARD
+    api_key = 32CHARACTERAPIKEYFROMMAXRMDASHBOARD
     query_server = www.systemmonitor.us
 <<<
 
